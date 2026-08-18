@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkding
+spec:
+  template:
+    spec:
+      containers:
+        - name: linkding
+          envFrom:
+            - secretRef:
+                name: linkding-superuser

@@ -5,3 +5,5 @@ resources:
   - ../../base/linkding/
   - cloudflare.yaml
   - tunnel-credentials.sops.yaml
+patches:
+  - path: deployment-env.patch.yaml
