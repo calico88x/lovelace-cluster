@@ -30,4 +30,19 @@ spec:
           kind: PrometheusRule
   values:
     grafana:
-      adminPassword: nova
+      adminPassword: test
+      ingress:
+        enabled: true
+
+        ingressClassName: traefik
+
+        hosts:
+          - lovelace-grafana.caliconet.lab
+
+        ## TLS configuration for grafana Ingress
+        ## Secret must be manually created in the namespace
+        ##
+        tls: []
+        # - secretName: grafana-general-tls
+        #   hosts:
+        #   - grafana.example.com
