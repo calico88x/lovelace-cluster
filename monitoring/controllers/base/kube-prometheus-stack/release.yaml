@@ -43,6 +43,6 @@ spec:
         ## Secret must be manually created in the namespace
         ##
         tls:
-          - secretName: grafana-tls.sops
+          - secretName: grafana-tls-secret
             hosts:
               - lovelace-grafana.caliconet.lab
