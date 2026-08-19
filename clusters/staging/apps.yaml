@@ -1,7 +1,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: apps
+  name: apps # This Kustomization is responsible for deploying the applications in the staging environment.
   namespace: flux-system
 spec:
   interval: 1m0s
@@ -10,9 +10,9 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/staging
-  prune: true
-  decryption:
+  path: ./apps/staging # This path points to the directory in the Git repository where the manifests for the applications are located.
+  prune: true # This will delete any resources that are no longer defined in the source.
+  decryption: # This section is used to decrypt secrets that are encrypted with SOPS. The provider specifies the decryption tool (in this case, SOPS), and the secretRef points to a Kubernetes Secret that contains the necessary keys for decryption.
     provider: sops
     secretRef:
       name: sops-age

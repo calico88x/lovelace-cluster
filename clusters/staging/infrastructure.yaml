@@ -1,7 +1,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-controllers
+  name: infrastructure-controllers # This Kustomization is responsible for deploying the infrastructure controllers in the staging environment.
   namespace: flux-system
 spec:
   interval: 1m0s
@@ -12,9 +12,9 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./infrastructure/controllers/staging
+  path: ./infrastructure/controllers/staging # This path points to the directory in the Git repository where the manifests for the infrastructure controllers are located.
   prune: true
-  decryption:
+  decryption: # This section is used to decrypt secrets that are encrypted with SOPS. The provider specifies the decryption tool (in this case, SOPS), and the secretRef points to a Kubernetes Secret that contains the necessary keys for decryption.
     provider: sops
     secretRef:
       name: sops-age
