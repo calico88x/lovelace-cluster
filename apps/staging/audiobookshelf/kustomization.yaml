@@ -3,6 +3,6 @@ kind: Kustomization
 namespace: audiobookshelf
 resources:
   - ../../base/audiobookshelf/
-  # - ingress.yaml # not in use right now, but can be used to expose linkding via traefik ingress
+  - ingress.yaml
 # patches:
 # - path: deployment-env.patch.yaml
