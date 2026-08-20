@@ -5,8 +5,8 @@ metadata:
   namespace: audiobookshelf
 spec:
   ports:
-    - port: 80
-      targetPort: 80
+    - port: 3005
+      targetPort: 3005
   selector:
     app: audiobookshelf
   type: ClusterIP
