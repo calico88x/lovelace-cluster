@@ -6,6 +6,6 @@ resources:
   - cloudflare.yaml
   - tunnel-credentials.sops.yaml
   - linkding-superuser.sops.yaml
-  # - ingress.yaml # not in use right now, but can be used to expose linkding via traefik ingress
+  - ingress.yaml
 patches:
   - path: deployment-env.patch.yaml
