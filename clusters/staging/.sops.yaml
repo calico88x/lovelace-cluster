@@ -2,3 +2,6 @@ creation_rules:
   - path_regex: .*.yaml
     encrypted_regex: ^(data|stringData)$
     age: age1jtcsfjakcl2pfnl78ss0l4dgfk0vyfdqel2u95x67p809c3eyfrs0u6xt2
+
+# secrets get the .sops.yaml filename to indicate that they are encrypted and safeto commit to git.
+# secrets without .sops.yaml filename convention are to be considered not encrypted.

@@ -68,7 +68,7 @@ data:
   config.yaml: |
     # Name of the tunnel you want to run
 
-    tunnel: 930714d6-3cad-4385-b2c8-4424141fb755
+    tunnel: 1ce4983b-459f-49d3-8ae7-dc31ba39d880
 
     credentials-file: /etc/cloudflared/creds/credentials.json
 
@@ -77,8 +77,8 @@ data:
     no-autoupdate: true
 
     ingress:
-    - hostname: lovelace-linkding.caliconet.ca
-      service: http://linkding:9090
+    - hostname: lovelace-audiobookshelf.caliconet.ca
+      service: http://audiobookshelf:3005
 
     # This rule sends traffic to the built-in hello-world HTTP server. This can help debug connectivity
     # issues. If hello.example.com resolves and tunnel.example.com does not, then the problem is
