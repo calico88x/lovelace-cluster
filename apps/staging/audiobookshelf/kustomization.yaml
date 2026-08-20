@@ -4,7 +4,5 @@ namespace: audiobookshelf
 resources:
   - ../../base/audiobookshelf/
   - ingress.yaml
-  - configmap.yaml
-  - configmap.yaml
 # patches:
 # - path: deployment-env.patch.yaml
