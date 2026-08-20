@@ -13,6 +13,10 @@ spec:
       labels:
         app: audiobookshelf
     spec:
+      securityContext:
+        fsGroup: 1000 # audiobookshelf group ID
+        runAsUser: 1000 # audiobookshelf user ID
+        runAsGroup: 1000 # audiobookshelf group ID
       containers:
         - name: audiobookshelf
           image: ghcr.io/advplyr/audiobookshelf:2.35.1
