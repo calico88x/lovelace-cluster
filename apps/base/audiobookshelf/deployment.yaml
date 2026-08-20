@@ -19,6 +19,11 @@ spec:
           ports:
             - containerPort: 3005
           env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: audiobookshelf-config
+                  key: PORT
             - name: TZ
               value: America/Toronto
 
