@@ -5,5 +5,6 @@ metadata:
   namespace: renovate
 data:
   RENOVATE_AUTODISCOVER: "false"
-  RENOVATE_GIT_AUTHOR: "Lovelace Renovate Bot <bot@renovateapp.com>"
-  RENOVATE_PLATFORM: "github"
+  RENOVATE_ENDPOINT: "http://forgejo.caliconet.lab:3002/api/v1/"
+  RENOVATE_GIT_AUTHOR: "Lovelace Renovate Bot <renovate-bot@caliconet.lab>"
+  RENOVATE_PLATFORM: "forgejo"
