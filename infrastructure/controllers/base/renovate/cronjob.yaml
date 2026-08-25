@@ -14,7 +14,7 @@ spec:
             - name: renovate
               image: renovate/renovate:latest
               args:
-                - calico88x/lovelace-cluster
+                - NovaLabs/lovelace-cluster
 
               envFrom:
                 - secretRef:
