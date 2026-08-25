@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft
+  namespace: minecraft
+spec:
+  template:
+    spec:
+      nodeSelector:
+        workload: minecraft
+
+      containers:
+        - name: minecraft
+          envFrom:
+            - configMapRef:
+                name: minecraft-config
+
+            - secretRef:
+                name: minecraft-private
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              memory: 6Gi

@@ -1,0 +1,199 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy-minecraft-logs
+  namespace: minecraft
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-minecraft-logs
+  namespace: minecraft
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - ""
+    resources:
+      - pods/log
+    verbs:
+      - get
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-minecraft-logs
+  namespace: minecraft
+subjects:
+  - kind: ServiceAccount
+    name: alloy-minecraft-logs
+    namespace: minecraft
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-minecraft-logs
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-minecraft-logs
+  namespace: minecraft
+data:
+  config.alloy: |
+    logging {
+      level  = "info"
+      format = "logfmt"
+    }
+
+    discovery.kubernetes "minecraft" {
+      role = "pod"
+
+      namespaces {
+        names = ["minecraft"]
+      }
+
+      selectors {
+        role  = "pod"
+        label = "app=minecraft"
+      }
+    }
+
+    discovery.relabel "minecraft" {
+      targets = discovery.kubernetes.minecraft.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_phase"]
+        regex         = "Running"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        regex         = "minecraft"
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        target_label = "job"
+        replacement  = "minecraft"
+      }
+
+      rule {
+        target_label = "server"
+        replacement  = "calico-lab"
+      }
+
+      rule {
+        target_label = "service_name"
+        replacement  = "minecraft"
+      }
+    }
+
+    loki.source.kubernetes "minecraft" {
+      targets    = discovery.relabel.minecraft.output
+      forward_to = [loki.write.docker_lxc.receiver]
+    }
+
+    loki.write "docker_lxc" {
+      endpoint {
+        url = "http://192.168.3.120:3100/loki/api/v1/push"
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy-minecraft-logs
+  namespace: minecraft
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: alloy-minecraft-logs
+
+  template:
+    metadata:
+      labels:
+        app: alloy-minecraft-logs
+
+    spec:
+      serviceAccountName: alloy-minecraft-logs
+      terminationGracePeriodSeconds: 30
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 473
+        runAsGroup: 473
+        fsGroup: 473
+
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.18.0
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --storage.path=/var/lib/alloy/data
+            - --disable-reporting
+            - /etc/alloy/config.alloy
+
+          ports:
+            - name: http
+              containerPort: 12345
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+              readOnly: true
+
+            - name: data
+              mountPath: /var/lib/alloy/data
+
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-minecraft-logs
+
+        - name: data
+          emptyDir: {}

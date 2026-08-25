@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playit
+  namespace: minecraft
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: playit
+
+  template:
+    metadata:
+      labels:
+        app: playit
+
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 15
+
+      containers:
+        - name: playit
+          image: ghcr.io/playit-cloud/playit-agent:1.0.10
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: playit-secret
+                  key: SECRET_KEY
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault

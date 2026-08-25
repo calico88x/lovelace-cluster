@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-headless
+  namespace: minecraft
+spec:
+  clusterIP: None
+  selector:
+    app: minecraft
+  ports:
+    - name: minecraft
+      protocol: TCP
+      port: 25565
+      targetPort: minecraft
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft
+  namespace: minecraft
+  labels:
+    app: minecraft
+spec:
+  type: ClusterIP
+  selector:
+    app: minecraft
+  ports:
+    - name: minecraft
+      protocol: TCP
+      port: 25565
+      targetPort: minecraft
+
+    - name: metrics
+      protocol: TCP
+      port: 9940
+      targetPort: metrics
+
+    - name: network-metrics
+      protocol: TCP
+      port: 9100
+      targetPort: network-metrics
