@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minecraft-config
+  namespace: minecraft
+data:
+  MEMORY: 4G
+  INIT_MEMORY: 2G
+  SERVER_NAME: CalicoNet K8-MC1
+  ENABLE_RCON: "TRUE"
+
+  RCON_CMDS_STARTUP: |
+    dhs pause
+    execute in minecraft:overworld run gamerule keep_inventory true
+    execute in minecraft:the_nether run gamerule keep_inventory true
+    execute in minecraft:the_end run gamerule keep_inventory true
+
+  GENERATE_STRUCTURES: "TRUE"
+  SPAWN_NPCS: "TRUE"
+  SPAWN_MONSTERS: "TRUE"
+  SPAWN_ANIMALS: "TRUE"
+  ENABLE_COMMAND_BLOCK: "TRUE"
+  ALLOW_NETHER: "TRUE"
+
+  MOTD: Now with 9000% more LODs!!
+
+  MODRINTH_PROJECTS: |
+    distant-horizons-support:0.14.0
+    prometheus-exporter:W6NHpyHW
+
+  EXISTING_OPS_FILE: SYNCHRONIZE
+  OP_PERMISSION_LEVEL: "4"

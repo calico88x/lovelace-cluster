@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft
+  namespace: minecraft
+spec:
+  serviceName: minecraft-headless
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: minecraft
+
+  template:
+    metadata:
+      labels:
+        app: minecraft
+
+    spec:
+      terminationGracePeriodSeconds: 120
+
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:java25
+          imagePullPolicy: IfNotPresent
+
+          stdin: true
+          tty: true
+
+          envFrom:
+            - configMapRef:
+                name: minecraft-config
+
+          ports:
+            - name: minecraft
+              containerPort: 25565
+              protocol: TCP
+
+            - name: metrics
+              containerPort: 9940
+              protocol: TCP
+
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    rcon-cli "say Server restarting; saving world..." || true
+                    rcon-cli "save-all flush" || true
+
+          resources:
+            requests:
+              cpu: "1"
+              memory: 3Gi
+            limits:
+              memory: 4Gi
+
+          startupProbe:
+            tcpSocket:
+              port: minecraft
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 60
+
+          readinessProbe:
+            tcpSocket:
+              port: minecraft
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+
+          volumeMounts:
+            - name: minecraft-data
+              mountPath: /data
+
+        - name: storage-metrics-collector
+          image: busybox:1.37.0
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - /bin/sh
+            - /collector/collect-storage-metrics.sh
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+
+          volumeMounts:
+            - name: minecraft-data
+              mountPath: /data
+              readOnly: true
+
+            - name: storage-metrics-script
+              mountPath: /collector
+              readOnly: true
+
+            - name: metrics-textfile
+              mountPath: /textfile
+
+        - name: network-exporter
+          image: prom/node-exporter:v1.9.1
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --collector.disable-defaults
+            - --collector.netdev
+            - --collector.textfile
+            - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+            - --web.listen-address=:9100
+
+          ports:
+            - name: network-metrics
+              containerPort: 9100
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+
+          volumeMounts:
+            - name: metrics-textfile
+              mountPath: /var/lib/node_exporter/textfile_collector
+              readOnly: true
+
+      volumes:
+        - name: minecraft-data
+          persistentVolumeClaim:
+            claimName: minecraft-data
+
+        - name: storage-metrics-script
+          configMap:
+            name: minecraft-storage-metrics
+            defaultMode: 365
+
+        - name: metrics-textfile
+          emptyDir: {}

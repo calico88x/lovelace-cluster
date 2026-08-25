@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minecraft-maintenance
+  namespace: minecraft
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+
+  nodeSelector:
+    workload: minecraft
+
+  containers:
+    - name: maintenance
+      image: alpine:3.22
+      command:
+        - sh
+        - -c
+        - sleep infinity
+
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 64Mi
+
+      volumeMounts:
+        - name: minecraft-data
+          mountPath: /data
+
+  volumes:
+    - name: minecraft-data
+      persistentVolumeClaim:
+        claimName: minecraft-data
