@@ -115,7 +115,7 @@ spec:
               mountPath: /textfile
 
         - name: network-exporter
-          image: prom/node-exporter:v1.9.1
+          image: prom/node-exporter:v1.12.1
           imagePullPolicy: IfNotPresent
 
           args:
