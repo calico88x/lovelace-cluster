@@ -11,6 +11,12 @@ spec:
 
       containers:
         - name: minecraft
+          ports:
+            - name: metrics
+              containerPort: 9940
+              hostPort: 9940
+              protocol: TCP
+
           envFrom:
             - configMapRef:
                 name: minecraft-config
@@ -24,3 +30,10 @@ spec:
               memory: 4Gi
             limits:
               memory: 6Gi
+
+        - name: network-exporter
+          ports:
+            - name: network-metrics
+              containerPort: 9100
+              hostPort: 9101
+              protocol: TCP
