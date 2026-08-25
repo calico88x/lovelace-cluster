@@ -44,17 +44,17 @@ See [Applications](docs/applications.md) for workload-specific details.
 
 ```text
 .
-â”œâ”€â”€ apps/
-â”‚   â”œâ”€â”€ base/                    # Reusable application resources
-â”‚   â””â”€â”€ staging/                 # Cluster-specific overlays and encrypted secrets
-â”œâ”€â”€ clusters/staging/            # Flux entry points
-â”œâ”€â”€ infrastructure/controllers/  # Platform controllers such as Renovate
-â”œâ”€â”€ monitoring/
-â”‚   â”œâ”€â”€ controllers/             # Helm repositories and releases
-â”‚   â””â”€â”€ configs/                 # ServiceMonitors and encrypted configuration
-â”œâ”€â”€ docs/                        # Architecture and operational documentation
-â”œâ”€â”€ CONTRIBUTING.md              # Change and validation workflow
-â””â”€â”€ renovate.json                # Renovate repository configuration
+├── apps/
+│   ├── base/                    # Reusable application resources
+│   └── staging/                 # Cluster-specific overlays and encrypted secrets
+├── clusters/staging/            # Flux entry points
+├── infrastructure/controllers/  # Platform controllers such as Renovate
+├── monitoring/
+│   ├── controllers/             # Helm repositories and releases
+│   └── configs/                 # ServiceMonitors and encrypted configuration
+├── docs/                        # Architecture and operational documentation
+├── CONTRIBUTING.md              # Change and validation workflow
+└── renovate.json                # Renovate repository configuration
 ```
 
 The `base` directories contain reusable manifests. The `staging` directories compose those resources and add environment-specific patches, storage, ingress, and encrypted secrets.
