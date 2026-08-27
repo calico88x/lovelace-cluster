@@ -6,7 +6,7 @@ metadata:
 data:
   MEMORY: 4G
   INIT_MEMORY: 2G
-  SERVER_NAME: CalicoNet K8-MC1
+  SERVER_NAME: CalicoNet K8
   ENABLE_RCON: "TRUE"
 
   RCON_CMDS_STARTUP: |
