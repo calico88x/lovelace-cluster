@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - renovate-container-env.sops.yaml
+  - renovate-github-env.sops.yaml
   - configmap.yaml
   - cronjob.yaml

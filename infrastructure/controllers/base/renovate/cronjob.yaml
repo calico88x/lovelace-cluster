@@ -19,6 +19,8 @@ spec:
               envFrom:
                 - secretRef:
                     name: renovate-container-env
+                - secretRef:
+                    name: renovate-github-env
                 - configMapRef:
                     name: renovate-configmap
 
