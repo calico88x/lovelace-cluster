@@ -1,0 +1,173 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minecraft-create-storage-metrics
+  namespace: minecraft-create
+data:
+  collect-storage-metrics.sh: |
+    #!/bin/sh
+    set -eu
+
+    bytes_from_du() {
+      du -sk "$1" 2>/dev/null |
+        awk '{printf "%.0f", $1 * 1024}'
+    }
+
+    file_count() {
+      find "$1" -type f 2>/dev/null |
+        wc -l |
+        tr -d ' '
+    }
+
+    escape_label() {
+      printf '%s' "$1" |
+        sed 's/\\/\\\\/g; s/"/\\"/g'
+    }
+
+    output=/textfile/minecraft_storage.prom
+    temporary="${output}.tmp"
+
+    while true
+    do
+      started=$(date +%s)
+
+      set -- $(
+        df -Pk /data |
+          awk 'NR == 2 {print $2, $3, $4}'
+      )
+
+      filesystem_size_bytes=$(
+        awk -v value="$1" \
+          'BEGIN {printf "%.0f", value * 1024}'
+      )
+
+      filesystem_used_bytes=$(
+        awk -v value="$2" \
+          'BEGIN {printf "%.0f", value * 1024}'
+      )
+
+      filesystem_available_bytes=$(
+        awk -v value="$3" \
+          'BEGIN {printf "%.0f", value * 1024}'
+      )
+
+      data_bytes=$(bytes_from_du /data)
+      data_files=$(file_count /data)
+
+      {
+        echo '# HELP minecraft_storage_filesystem_size_bytes Size of the filesystem backing /data.'
+        echo '# TYPE minecraft_storage_filesystem_size_bytes gauge'
+        printf 'minecraft_storage_filesystem_size_bytes %s\n' \
+          "$filesystem_size_bytes"
+
+        echo '# HELP minecraft_storage_filesystem_used_bytes Used bytes on the filesystem backing /data.'
+        echo '# TYPE minecraft_storage_filesystem_used_bytes gauge'
+        printf 'minecraft_storage_filesystem_used_bytes %s\n' \
+          "$filesystem_used_bytes"
+
+        echo '# HELP minecraft_storage_filesystem_available_bytes Available bytes on the filesystem backing /data.'
+        echo '# TYPE minecraft_storage_filesystem_available_bytes gauge'
+        printf 'minecraft_storage_filesystem_available_bytes %s\n' \
+          "$filesystem_available_bytes"
+
+        echo '# HELP minecraft_storage_data_bytes Total disk usage beneath /data.'
+        echo '# TYPE minecraft_storage_data_bytes gauge'
+        printf 'minecraft_storage_data_bytes %s\n' \
+          "$data_bytes"
+
+        echo '# HELP minecraft_storage_data_files Total files beneath /data.'
+        echo '# TYPE minecraft_storage_data_files gauge'
+        printf 'minecraft_storage_data_files %s\n' \
+          "$data_files"
+
+        echo '# HELP minecraft_storage_directory_bytes Disk usage of each top-level /data directory.'
+        echo '# TYPE minecraft_storage_directory_bytes gauge'
+
+        echo '# HELP minecraft_storage_directory_files File count beneath each top-level /data directory.'
+        echo '# TYPE minecraft_storage_directory_files gauge'
+
+        find /data \
+          -mindepth 1 \
+          -maxdepth 1 \
+          -type d \
+          -print |
+          sort |
+          while IFS= read -r directory_path
+          do
+            directory_name=${directory_path#/data/}
+            directory_label=$(escape_label "$directory_name")
+            directory_bytes=$(bytes_from_du "$directory_path")
+            directory_files=$(file_count "$directory_path")
+
+            printf 'minecraft_storage_directory_bytes{directory="%s"} %s\n' \
+              "$directory_label" \
+              "$directory_bytes"
+
+            printf 'minecraft_storage_directory_files{directory="%s"} %s\n' \
+              "$directory_label" \
+              "$directory_files"
+          done
+
+        echo '# HELP minecraft_world_region_bytes Disk usage of region files by dimension.'
+        echo '# TYPE minecraft_world_region_bytes gauge'
+
+        echo '# HELP minecraft_world_region_files Number of generated region files by dimension.'
+        echo '# TYPE minecraft_world_region_files gauge'
+
+        for region_spec in \
+          'overworld|/data/world/region' \
+          'the_nether|/data/world/DIM-1/region' \
+          'the_end|/data/world/DIM1/region'
+        do
+          dimension=${region_spec%%|*}
+          region_path=${region_spec#*|}
+
+          if [ -d "$region_path" ]
+          then
+            region_bytes=$(bytes_from_du "$region_path")
+
+            region_files=$(
+              find "$region_path" \
+                -maxdepth 1 \
+                -type f \
+                -name '*.mca' |
+                wc -l |
+                tr -d ' '
+            )
+          else
+            region_bytes=0
+            region_files=0
+          fi
+
+          printf 'minecraft_world_region_bytes{dimension="%s"} %s\n' \
+            "$dimension" \
+            "$region_bytes"
+
+          printf 'minecraft_world_region_files{dimension="%s"} %s\n' \
+            "$dimension" \
+            "$region_files"
+        done
+      } > "$temporary"
+
+      finished=$(date +%s)
+      duration=$((finished - started))
+
+      {
+        echo '# HELP minecraft_storage_scan_duration_seconds Time required to scan /data.'
+        echo '# TYPE minecraft_storage_scan_duration_seconds gauge'
+        printf 'minecraft_storage_scan_duration_seconds %s\n' \
+          "$duration"
+
+        echo '# HELP minecraft_storage_last_success_timestamp_seconds Unix timestamp of the latest successful scan.'
+        echo '# TYPE minecraft_storage_last_success_timestamp_seconds gauge'
+        printf 'minecraft_storage_last_success_timestamp_seconds %s\n' \
+          "$finished"
+
+        echo '# HELP minecraft_storage_scan_success Whether the latest storage scan completed successfully.'
+        echo '# TYPE minecraft_storage_scan_success gauge'
+        echo 'minecraft_storage_scan_success 1'
+      } >> "$temporary"
+
+      mv "$temporary" "$output"
+      sleep 300
+    done

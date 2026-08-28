@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft-create
+  namespace: minecraft-create
+spec:
+  template:
+    spec:
+      nodeSelector:
+        workload: minecraft
+
+      containers:
+        - name: minecraft-create
+          ports:
+            - name: metrics
+              containerPort: 19565
+              hostPort: 9941
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: minecraft-create-config
+
+            - secretRef:
+                name: minecraft-create-private
+                optional: false
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: 8Gi
+            limits:
+              memory: 9Gi
+
+        - name: network-exporter
+          ports:
+            - name: network-metrics
+              containerPort: 9100
+              hostPort: 9102
+              protocol: TCP
