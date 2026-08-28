@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-active
+  namespace: minecraft
+spec:
+  type: ExternalName
+  externalName: minecraft.minecraft.svc.cluster.local

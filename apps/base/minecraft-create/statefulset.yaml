@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft-create
+  namespace: minecraft-create
+  labels:
+    app.kubernetes.io/part-of: minecraft-servers
+spec:
+  serviceName: minecraft-create-headless
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: minecraft-create
+
+  template:
+    metadata:
+      labels:
+        app: minecraft-create
+        app.kubernetes.io/part-of: minecraft-servers
+
+    spec:
+      terminationGracePeriodSeconds: 300
+
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: minecraft
+              namespaces:
+                - minecraft
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: minecraft-create
+          image: itzg/minecraft-server:java21
+          imagePullPolicy: IfNotPresent
+
+          stdin: true
+          tty: true
+
+          envFrom:
+            - configMapRef:
+                name: minecraft-create-config
+
+          ports:
+            - name: minecraft
+              containerPort: 25565
+              protocol: TCP
+
+            - name: metrics
+              containerPort: 19565
+              protocol: TCP
+
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    rcon-cli "say Create server restarting; saving world..." || true
+                    rcon-cli "save-all flush" || true
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: 6Gi
+            limits:
+              memory: 8Gi
+
+          startupProbe:
+            tcpSocket:
+              port: minecraft
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 180
+
+          readinessProbe:
+            tcpSocket:
+              port: minecraft
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 12
+
+          volumeMounts:
+            - name: minecraft-create-data
+              mountPath: /data
+
+        - name: storage-metrics-collector
+          image: busybox:1.38.0
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - /bin/sh
+            - /collector/collect-storage-metrics.sh
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+
+          volumeMounts:
+            - name: minecraft-create-data
+              mountPath: /data
+              readOnly: true
+
+            - name: storage-metrics-script
+              mountPath: /collector
+              readOnly: true
+
+            - name: metrics-textfile
+              mountPath: /textfile
+
+        - name: network-exporter
+          image: prom/node-exporter:v1.12.1
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --collector.disable-defaults
+            - --collector.netdev
+            - --collector.textfile
+            - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+            - --web.listen-address=:9100
+
+          ports:
+            - name: network-metrics
+              containerPort: 9100
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+
+          volumeMounts:
+            - name: metrics-textfile
+              mountPath: /var/lib/node_exporter/textfile_collector
+              readOnly: true
+
+      volumes:
+        - name: minecraft-create-data
+          persistentVolumeClaim:
+            claimName: minecraft-create-data
+
+        - name: storage-metrics-script
+          configMap:
+            name: minecraft-create-storage-metrics
+            defaultMode: 365
+
+        - name: metrics-textfile
+          emptyDir: {}

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-create-headless
+  namespace: minecraft-create
+spec:
+  clusterIP: None
+  selector:
+    app: minecraft-create
+  ports:
+    - name: minecraft
+      protocol: TCP
+      port: 25565
+      targetPort: minecraft
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-create
+  namespace: minecraft-create
+  labels:
+    app: minecraft-create
+spec:
+  type: ClusterIP
+  selector:
+    app: minecraft-create
+  ports:
+    - name: minecraft
+      protocol: TCP
+      port: 25565
+      targetPort: minecraft
+
+    - name: metrics
+      protocol: TCP
+      port: 9941
+      targetPort: metrics
+
+    - name: network-metrics
+      protocol: TCP
+      port: 9100
+      targetPort: network-metrics

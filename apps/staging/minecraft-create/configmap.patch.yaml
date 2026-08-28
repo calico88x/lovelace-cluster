@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minecraft-create-config
+  namespace: minecraft-create
+data:
+  SERVER_NAME: CalicoNet Create
+  ENABLE_RCON: "TRUE"
+
+  RCON_CMDS_STARTUP: |
+    execute in minecraft:overworld run gamerule keep_inventory true
+    execute in minecraft:the_nether run gamerule keep_inventory true
+    execute in minecraft:the_end run gamerule keep_inventory true
+
+  GENERATE_STRUCTURES: "TRUE"
+  SPAWN_NPCS: "TRUE"
+  SPAWN_MONSTERS: "TRUE"
+  SPAWN_ANIMALS: "TRUE"
+  ENABLE_COMMAND_BLOCK: "TRUE"
+  ALLOW_NETHER: "TRUE"
+  ALLOW_FLIGHT: "TRUE"
+
+  MOTD: All of Create 1.21.1 on CalicoNet
+
+  CURSEFORGE_FILES: |
+    prometheus-exporter:5657655
+
+  EXISTING_OPS_FILE: SYNCHRONIZE
+  OP_PERMISSION_LEVEL: "4"
