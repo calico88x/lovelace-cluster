@@ -14,3 +14,12 @@ patches:
   - path: storage.patch.yaml
   - path: statefulset.patch.yaml
   - path: configmap.patch.yaml
+  - path: create-anti-affinity.patch.yaml
+
+# Paper is stopped while Create is active. The shared Playit agent is
+# deliberately omitted and remains running.
+replicas:
+  - name: minecraft
+    count: 0
+  - name: alloy-minecraft-logs
+    count: 0

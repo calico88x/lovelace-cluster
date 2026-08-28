@@ -5,4 +5,4 @@ metadata:
   namespace: minecraft
 spec:
   type: ExternalName
-  externalName: minecraft.minecraft.svc.cluster.local
+  externalName: minecraft-create.minecraft-create.svc.cluster.local
