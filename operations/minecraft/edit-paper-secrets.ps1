@@ -66,7 +66,7 @@ editor_file=$3
 expected_name=$4
 expected_namespace=$5
 
-for command_name in sops kubectl python3 base64; do
+for command_name in sops kubectl python3 base64 awk tr; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     printf 'Required command is missing on Lovelace: %s\n' "$command_name" >&2
     exit 10
@@ -82,7 +82,7 @@ mapfile -t recipients < <(
   awk '
     $1 == "recipient:" {gsub(/"/, "", $2); print $2}
     $1 == "-" && $2 == "recipient:" {gsub(/"/, "", $3); print $3}
-  ' "$input_file"
+  ' "$input_file" | tr -d '\r'
 )
 if (( ${#recipients[@]} == 0 )); then
   printf 'Could not determine the age recipient from the encrypted document.\n' >&2
