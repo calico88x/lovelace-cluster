@@ -24,6 +24,7 @@ data:
 
   CURSEFORGE_FILES: |
     prometheus-exporter:5657655
+    distant-horizons:8389148
 
   EXISTING_OPS_FILE: SYNCHRONIZE
   OP_PERMISSION_LEVEL: "4"
