@@ -5,6 +5,10 @@ metadata:
   namespace: minecraft-create
 spec:
   template:
+    metadata:
+      annotations:
+        minecraft.caliconet/config-revision: "distant-horizons-3.2.0-b"
+
     spec:
       nodeSelector:
         workload: minecraft
