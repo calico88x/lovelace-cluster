@@ -166,6 +166,56 @@ spec:
               mountPath: /var/lib/node_exporter/textfile_collector
               readOnly: true
 
+        - name: dh-metrics-collector
+          image: python:3.13-alpine
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - python3
+            - /collector/collect-dh-metrics.py
+
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+
+            - name: RCON_HOST
+              value: 127.0.0.1
+
+            - name: RCON_PORT
+              value: "25575"
+
+            - name: POLL_SECONDS
+              value: "5"
+
+            - name: METRICS_FILE
+              value: /textfile/minecraft_dh.prom
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+
+          volumeMounts:
+            - name: dh-metrics-script
+              mountPath: /collector
+              readOnly: true
+
+            - name: metrics-textfile
+              mountPath: /textfile
+
       volumes:
         - name: minecraft-create-data
           persistentVolumeClaim:
@@ -175,6 +225,11 @@ spec:
           configMap:
             name: minecraft-create-storage-metrics
             defaultMode: 365
+
+        - name: dh-metrics-script
+          configMap:
+            name: minecraft-create-dh-metrics
+            defaultMode: 292
 
         - name: metrics-textfile
           emptyDir: {}
