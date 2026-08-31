@@ -18,6 +18,11 @@ METRICS_FILE = Path(
 
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
+MINECRAFT_FORMATTING = re.compile(
+    r"§[0-9A-FK-ORX]",
+    re.IGNORECASE,
+)
+
 POOL_NAMES = {
     "World Gen/Import": "world_gen_import",
     "Render Load": "render_load",
@@ -54,7 +59,9 @@ def parse_number(value):
 
 
 def clean_output(value):
-    return ANSI_ESCAPE.sub("", value).replace("\r", "")
+    output = ANSI_ESCAPE.sub("", value)
+    output = MINECRAFT_FORMATTING.sub("", output)
+    return output.replace("\r", "")
 
 
 def parse_debug_output(raw_output):
