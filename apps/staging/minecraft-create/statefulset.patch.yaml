@@ -7,7 +7,7 @@ spec:
   template:
     metadata:
       annotations:
-        minecraft.caliconet/config-revision: "distant-horizons-3.2.0-b"
+        minecraft.caliconet/config-revision: "distant-horizons-3.2.0-b-dh-metrics-v1"
 
     spec:
       nodeSelector:
@@ -35,6 +35,15 @@ spec:
               memory: 8Gi
             limits:
               memory: 9Gi
+
+        - name: dh-metrics-collector
+          env:
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-create-private
+                  key: RCON_PASSWORD
+                  optional: false
 
         - name: network-exporter
           ports:
