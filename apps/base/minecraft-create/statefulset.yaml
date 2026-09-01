@@ -49,10 +49,6 @@ spec:
             - configMapRef:
                 name: minecraft-create-config
 
-          env:
-            - name: DATAPACKS
-              value: /datapacks/caliconet-slow-time
-
           ports:
             - name: minecraft
               containerPort: 25565
@@ -98,7 +94,7 @@ spec:
               mountPath: /data
 
             - name: slow-day-cycle
-              mountPath: /datapacks/caliconet-slow-time
+              mountPath: /data/world/datapacks/caliconet-slow-time
               readOnly: true
 
         - name: storage-metrics-collector
