@@ -10,7 +10,8 @@ resources:
   - storage.yaml
   - storage-metrics.yaml
   - statefulset.yaml
-# - playit.yaml
+  # - playit.yaml
+  - slow-day-cycle.yaml
 
 configMapGenerator:
   - name: minecraft-create-dh-metrics
