@@ -5,6 +5,7 @@ metadata:
   namespace: minecraft-create
   labels:
     app.kubernetes.io/part-of: minecraft-servers
+
 spec:
   serviceName: minecraft-create-headless
   replicas: 1
@@ -47,6 +48,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: minecraft-create-config
+
+          env:
+            - name: DATAPACKS
+              value: /datapacks/caliconet-slow-time
 
           ports:
             - name: minecraft
@@ -91,6 +96,10 @@ spec:
           volumeMounts:
             - name: minecraft-create-data
               mountPath: /data
+
+            - name: slow-day-cycle
+              mountPath: /datapacks/caliconet-slow-time
+              readOnly: true
 
         - name: storage-metrics-collector
           image: busybox:1.38.0
@@ -230,6 +239,23 @@ spec:
           configMap:
             name: minecraft-create-dh-metrics
             defaultMode: 292
+
+        - name: slow-day-cycle
+          configMap:
+            name: minecraft-create-slow-day-cycle
+            defaultMode: 292
+            items:
+              - key: pack.mcmeta
+                path: pack.mcmeta
+
+              - key: load.json
+                path: data/minecraft/tags/function/load.json
+
+              - key: load.mcfunction
+                path: data/caliconet_slow_time/function/load.mcfunction
+
+              - key: tick.mcfunction
+                path: data/caliconet_slow_time/function/tick.mcfunction
 
         - name: metrics-textfile
           emptyDir: {}
