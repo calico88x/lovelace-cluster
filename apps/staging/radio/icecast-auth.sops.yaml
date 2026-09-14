@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: icecast-auth
+    namespace: radio
+type: Opaque
+stringData:
+    source-password: ENC[AES256_GCM,data:FNgI9sg2qh/HzAnZB2+lg+9Z7n+Yf0A47RP6/th0Zy6Q2uoVhfXG8rsB12M=,iv:t6+G7KdXSmfEUbxndLPPX3gvssY3e13gSCd/5ioqMfE=,tag:Sw6/1WcWwZed2hp0a/hzHw==,type:str]
+    relay-password: ENC[AES256_GCM,data:hI6R4rpinvDwD5QUZshKrebOK0++k2LSlDlCcyhq/EqE8/tY6OZ7TImd/4s=,iv:1F6sJb0VAYp0hN9CgXD5nXnLxe4LOyEggFo2ln9Bd2I=,tag:Fmb2tBDsM/2gb/3FFu7+XA==,type:str]
+    admin-password: ENC[AES256_GCM,data:L+TvQviQ6K4J0DAdBwievQOEL0eGHUWntbF9IV9Jqvw37EnB+5s9xLSEmdA=,iv:9HYv1eJh+Jtl/RrIQo9prdh+QjvEccaUFviZIJlp7O8=,tag:6BWiOnNjq3GZCX2wZ08+Ag==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4TlV0Vm5mSkFweE9oSzZy
+            YkRZSkVzWVFKVGVHRlN3Ynk5dEUrKzZ6Vm1jCjRDdXlQZVRUNFNMaXhmZG5FdzZj
+            Y2loZk0vV1JtdDRJM1dQai96Q2RSczAKLS0tIEJuRWlLbm5xSUszc2VReFVOeGhQ
+            bENxT29zWFA4NVlBTnFQMlJubW5Zcm8KocMybU1gVjsyu33OE+i73NKCumaKolfB
+            dydgs19qJ9smdqxaelYhadY/9REl3OVTl22SMGCbF9mSy2UkZrpdBw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1jtcsfjakcl2pfnl78ss0l4dgfk0vyfdqel2u95x67p809c3eyfrs0u6xt2
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-14T19:49:28Z"
+    mac: ENC[AES256_GCM,data:gt1hAna/fSbes4L2dHHFK602jLsnuJZsEDJqsrEJfpheS33ZHF6QIROW66e0WHoKSmSbiLPPVS6fcgez7/9IM1R2nbllWRksBtpw6OXzwfeG5eTmJy749My48i+1Svp6LuEs1sdOL51wuJ9IZvb5gVERcnUveCrrkAOQWYUuDP0=,iv:bUmbrjW8125nzfd3rNBHEwFdD91PeZZWrT+vj98HbBY=,tag:HQDK7Hs5sxZf2MzwzqznCg==,type:str]
+    version: 3.13.2

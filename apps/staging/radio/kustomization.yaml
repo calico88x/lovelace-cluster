@@ -5,6 +5,7 @@ resources:
   - ../../base/radio
   - storageclass.yaml
   - persistentvolume.yaml
+  - icecast-auth.sops.yaml
 
 patches:
   - path: storage.patch.yaml
