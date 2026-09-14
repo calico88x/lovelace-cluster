@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icecast
+  namespace: radio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: icecast
+  template:
+    metadata:
+      labels:
+        app: icecast
+    spec:
+      containers:
+        - name: icecast
+          image: ghcr.io/libretime/icecast:2.5.0
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: ICECAST_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: icecast-auth
+                  key: source-password
+            - name: ICECAST_RELAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: icecast-auth
+                  key: relay-password
+            - name: ICECAST_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: icecast-auth
+                  key: admin-password
+            - name: ICECAST_ADMIN_USERNAME
+              value: admin
+            - name: ICECAST_HOSTNAME
+              value: icecast.radio.svc.cluster.local
+            - name: ICECAST_LOCATION
+              value: NovaLabs
+            - name: ICECAST_MAX_CLIENTS
+              value: "100"
+            - name: ICECAST_MAX_SOURCES
+              value: "4"
