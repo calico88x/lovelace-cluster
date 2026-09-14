@@ -6,6 +6,7 @@ resources:
   - storageclass.yaml
   - persistentvolume.yaml
   - icecast-auth.sops.yaml
+  - ingress.yaml
 
 patches:
   - path: storage.patch.yaml

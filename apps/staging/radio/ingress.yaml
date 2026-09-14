@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radio-stream
+  namespace: radio
+spec:
+  ingressClassName: traefik
+
+  tls:
+    - hosts:
+        - lovelace-radio.caliconet.lab
+      secretName: radio-tls-secret
+
+  rules:
+    - host: lovelace-radio.caliconet.lab
+      http:
+        paths:
+          - path: /radio.mp3
+            pathType: Exact
+            backend:
+              service:
+                name: icecast
+                port:
+                  number: 8000
