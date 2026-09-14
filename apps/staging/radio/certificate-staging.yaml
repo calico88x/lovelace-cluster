@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radio-public-staging
+  namespace: radio
+spec:
+  secretName: radio-public-staging-tls
+
+  dnsNames:
+    - radio.caliconet.ca
+
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+    group: cert-manager.io
