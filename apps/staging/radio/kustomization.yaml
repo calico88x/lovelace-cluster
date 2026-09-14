@@ -6,6 +6,7 @@ resources:
   - storageclass.yaml
   - persistentvolume.yaml
   - icecast-auth.sops.yaml
+  - radio-tls.sops.yaml
   - ingress.yaml
 
 patches:
