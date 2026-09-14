@@ -8,6 +8,7 @@ resources:
   - icecast-auth.sops.yaml
   - radio-tls.sops.yaml
   - ingress.yaml
+  - certificate-staging.yaml
 
 patches:
   - path: storage.patch.yaml
