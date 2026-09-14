@@ -9,6 +9,7 @@ resources:
   - radio-tls.sops.yaml
   - ingress.yaml
   - certificate-staging.yaml
+  - certificate-production.yaml
 
 patches:
   - path: storage.patch.yaml
