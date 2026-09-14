@@ -8,7 +8,6 @@ resources:
   - icecast-auth.sops.yaml
   - radio-tls.sops.yaml
   - ingress.yaml
-  - certificate-staging.yaml
   - certificate-production.yaml
   - ingress-public.yaml
 
