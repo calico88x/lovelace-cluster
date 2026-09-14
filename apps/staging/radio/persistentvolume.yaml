@@ -17,7 +17,7 @@ spec:
   storageClassName: radio-local
 
   local:
-    path: /srv/radio
+    path: /srv/radio/music
 
   nodeAffinity:
     required:
