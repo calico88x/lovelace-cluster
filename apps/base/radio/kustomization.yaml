@@ -6,3 +6,5 @@ resources:
   - storage.yaml
   - icecast-deployment.yaml
   - icecast-service.yaml
+  - liquidsoap-configmap.yaml
+  - liquidsoap-deployment.yaml
