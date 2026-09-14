@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radio-music
+  namespace: radio
+spec:
+  storageClassName: radio-local
