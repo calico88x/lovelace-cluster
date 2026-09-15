@@ -8,3 +8,4 @@ resources:
   - icecast-service.yaml
   - liquidsoap-configmap.yaml
   - liquidsoap-deployment.yaml
+  - liquidsoap-service.yaml

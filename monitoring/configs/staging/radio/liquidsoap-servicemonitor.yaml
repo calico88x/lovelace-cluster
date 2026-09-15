@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: liquidsoap
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - radio
+
+  selector:
+    matchLabels:
+      app: liquidsoap
+
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
