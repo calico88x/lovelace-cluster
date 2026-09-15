@@ -8,6 +8,8 @@ data:
     settings.prometheus.server := true
     settings.prometheus.server.port := 9599
 
+    settings.frame.audio.samplerate := 48000
+
     playlist_source = playlist(
       id="radio_playlist",
       mode="random",
@@ -52,6 +54,7 @@ data:
         format="mp3",
         %audio(
           codec="libmp3lame",
+          samplerate=48000,
           b="320k"
         )
       ),
