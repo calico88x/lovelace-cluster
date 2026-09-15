@@ -52,7 +52,7 @@ data:
         format="mp3",
         %audio(
           codec="libmp3lame",
-          b="192k"
+          b="320k"
         )
       ),
       host="icecast.radio.svc.cluster.local",
