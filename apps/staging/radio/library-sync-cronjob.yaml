@@ -1,0 +1,96 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: radio-library-sync
+  namespace: radio
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+
+      template:
+        metadata:
+          labels:
+            app: radio-library-sync
+
+        spec:
+          restartPolicy: Never
+
+          containers:
+            - name: sync
+              image: alpine:3.22
+
+              command:
+                - /bin/sh
+                - -ec
+
+              args:
+                - |
+                  apk add --no-cache git git-lfs openssh-client
+
+                  export GIT_SSH_COMMAND="ssh \
+                    -i /ssh/id_ed25519 \
+                    -o IdentitiesOnly=yes \
+                    -o UserKnownHostsFile=/ssh/known_hosts \
+                    -o StrictHostKeyChecking=yes"
+
+                  REPO="ssh://git@forgejo.caliconet.lab:2222/NovaLabs/radio-library.git"
+                  DEST="/library/radio-library"
+                  TMP="/library/.radio-library.tmp"
+
+                  git lfs install --skip-repo
+
+                  if [ ! -d "${DEST}/.git" ]; then
+                    echo "Initial radio library clone"
+
+                    rm -rf "${TMP}"
+
+                    GIT_LFS_SKIP_SMUDGE=1 \
+                      git clone \
+                        --branch main \
+                        --single-branch \
+                        "${REPO}" \
+                        "${TMP}"
+
+                    git -C "${TMP}" lfs pull
+
+                    if [ -e "${DEST}" ]; then
+                      echo "Destination exists but is not a Git checkout: ${DEST}"
+                      exit 1
+                    fi
+
+                    mv "${TMP}" "${DEST}"
+                  else
+                    echo "Reconciling existing radio library"
+
+                    git -C "${DEST}" fetch --prune origin main
+                    git -C "${DEST}" reset --hard origin/main
+                    git -C "${DEST}" lfs pull
+                    git -C "${DEST}" clean -fdx
+                  fi
+
+                  echo "Radio library synchronized to commit:"
+                  git -C "${DEST}" rev-parse --short HEAD
+
+              volumeMounts:
+                - name: music
+                  mountPath: /library
+
+                - name: ssh
+                  mountPath: /ssh
+                  readOnly: true
+
+          volumes:
+            - name: music
+              persistentVolumeClaim:
+                claimName: radio-music
+
+            - name: ssh
+              secret:
+                secretName: radio-library-ssh
+                defaultMode: 0400
