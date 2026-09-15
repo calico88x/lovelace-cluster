@@ -10,6 +10,7 @@ resources:
   - ingress.yaml
   - certificate-production.yaml
   - ingress-public.yaml
+  - library-sync-cronjob.yaml
 
 patches:
   - path: storage.patch.yaml
