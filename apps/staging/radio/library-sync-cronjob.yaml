@@ -3,8 +3,10 @@ kind: CronJob
 metadata:
   name: radio-library-sync
   namespace: radio
+
 spec:
   schedule: "*/5 * * * *"
+  suspend: true
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
@@ -45,7 +47,7 @@ spec:
 
                   git lfs install --skip-repo
 
-                  if [ ! -d "${DEST}/.git" ]; then
+                  if ! git -C "${DEST}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
                     echo "Initial radio library clone"
 
                     rm -rf "${TMP}"
@@ -57,11 +59,12 @@ spec:
                         "${REPO}" \
                         "${TMP}"
 
-                    git -C "${TMP}" lfs pull
+                    cd "${TMP}"
+                    git lfs pull
+                    cd /
 
                     if [ -e "${DEST}" ]; then
-                      echo "Destination exists but is not a Git checkout: ${DEST}"
-                      exit 1
+                      rm -rf "${DEST}"
                     fi
 
                     mv "${TMP}" "${DEST}"
@@ -70,8 +73,11 @@ spec:
 
                     git -C "${DEST}" fetch --prune origin main
                     git -C "${DEST}" reset --hard origin/main
-                    git -C "${DEST}" lfs pull
-                    git -C "${DEST}" clean -fdx
+
+                    cd "${DEST}"
+                    git lfs pull
+                    git clean -fdx
+                    cd /
                   fi
 
                   echo "Radio library synchronized to commit:"
