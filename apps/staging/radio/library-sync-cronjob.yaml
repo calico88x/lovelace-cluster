@@ -173,7 +173,7 @@ spec:
                   # or the complete new release, never a partially copied
                   # directory.
                   #
-                  mv -f "${NEXT_LINK}" "${CURRENT}"
+                  mv -Tf "${NEXT_LINK}" "${CURRENT}"
 
                   #
                   # Retain:
