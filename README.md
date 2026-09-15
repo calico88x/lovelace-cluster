@@ -8,23 +8,39 @@ Forgejo is the primary Git service. Changes are reviewed through pull requests, 
 
 ```mermaid
 flowchart TD
-    user["Operator"] -->|push / pull request| forgejo["Forgejo\nsource of truth"]
+    operator["Operator"] -->|push / pull request| forgejo["Forgejo<br/>source of truth"]
     renovate["Renovate CronJob"] -->|dependency PRs| forgejo
     forgejo -->|mirror| github["GitHub mirror"]
     forgejo -->|desired state| flux["Flux controllers"]
-    flux --> control["lovelace\nARM64 control plane"]
-    flux --> worker["k8s-worker-01\nx86_64 worker"]
-    worker --> minecraft["Minecraft StatefulSet\nretained local storage"]
+
+    library["Forgejo<br/>radio-library + Git LFS"] --> radiosync
+    registry["Forgejo OCI registry<br/>radio-library-sync image"] --> radiosync
+
+    subgraph cluster["Lovelace k3s cluster"]
+        flux --> control["lovelace<br/>ARM64 control plane"]
+        flux --> worker["k8s-worker-01<br/>x86_64 worker"]
+
+        worker --> minecraft["Minecraft StatefulSet<br/>retained local storage"]
+
+        radiosync["Radio library sync CronJob"] --> radiopv["Radio local PV<br/>retained library storage"]
+        radiopv --> liquidsoap["Liquidsoap<br/>random playlist / MP3 encoding"]
+        liquidsoap --> icecast["Icecast<br/>stream server"]
+        icecast --> traefik["Traefik<br/>exact-path HTTPS ingress"]
+    end
+
+    traefik --> listeners["Radio listeners"]
 ```
 
 | Component | Role |
 | --- | --- |
 | `lovelace` | Raspberry Pi 5, ARM64 k3s server/control plane |
-| `k8s-worker-01` | Debian x86_64 k3s worker labeled `workload=minecraft` |
-| Forgejo | Primary repository, pull requests, and GitOps source |
+| `k8s-worker-01` | Debian x86_64 k3s worker hosting node-local Minecraft and Radio storage |
+| Forgejo | Primary repository, pull requests, GitOps source, radio library source, and OCI registry |
 | GitHub | Push mirror for off-site visibility |
 | Flux | Reconciles applications, infrastructure, and monitoring from `main` |
 | SOPS + age | Encrypts Kubernetes Secret data committed to Git |
+| Git LFS | Stores large radio audio objects outside normal Git blobs |
+| Traefik | In-cluster HTTP/HTTPS ingress, including the public radio stream path |
 
 For the complete design, see [Architecture](docs/architecture.md).
 
@@ -35,10 +51,11 @@ For the complete design, see [Architecture](docs/architecture.md).
 | Audiobookshelf | `audiobookshelf` | Deployment | Four `local-path` PVCs | Traefik and Cloudflare Tunnel |
 | Linkding | `linkding` | Deployment | One `local-path` PVC | Traefik and Cloudflare Tunnel |
 | Minecraft Paper | `minecraft` | StatefulSet | Retained 60 GiB local PV on `k8s-worker-01` | Playit Tunnel |
+| Radio | `radio` | Icecast + Liquidsoap Deployments; library sync CronJob | Retained 60 GiB local PV on `k8s-worker-01` | Traefik; public exact-path HTTPS stream |
 | Renovate | `renovate` | Hourly CronJob | None | Forgejo API |
 | kube-prometheus-stack | `monitoring` | Flux HelmRelease | Grafana is intentionally ephemeral | Traefik ingress |
 
-See [Applications](docs/applications.md) for workload-specific details.
+See [Applications](docs/applications.md) for workload-specific details and [Radio](docs/radio.md) for radio operations and library management.
 
 ## Repository layout
 
@@ -52,6 +69,8 @@ See [Applications](docs/applications.md) for workload-specific details.
 ├── monitoring/
 │   ├── controllers/             # Helm repositories and releases
 │   └── configs/                 # ServiceMonitors and encrypted configuration
+├── images/
+│   └── radio-library-sync/      # Purpose-built radio reconciliation image
 ├── docs/                        # Architecture and operational documentation
 ├── CONTRIBUTING.md              # Change and validation workflow
 └── renovate.json                # Renovate repository configuration
@@ -59,9 +78,11 @@ See [Applications](docs/applications.md) for workload-specific details.
 
 The `base` directories contain reusable manifests. The `staging` directories compose those resources and add environment-specific patches, storage, ingress, and encrypted secrets.
 
+The radio library itself is intentionally separate from this infrastructure repository. Audio is stored in the Forgejo `NovaLabs/radio-library` repository and managed with Git LFS. The cluster reconciles that repository onto retained local storage through the `radio-library-sync` CronJob.
+
 ## Reconciliation flow
 
-Flux bootstraps from `clusters/staging` and reconciles three primary areas:
+Flux bootstraps from `clusters/staging` and reconciles four primary areas:
 
 | Flux Kustomization | Repository path | Purpose |
 | --- | --- | --- |
@@ -71,6 +92,20 @@ Flux bootstraps from `clusters/staging` and reconciles three primary areas:
 | `monitoring-configs` | `./monitoring/configs/staging` | ServiceMonitors and encrypted monitoring configuration |
 
 All four reconcile from the same Flux `GitRepository`. SOPS decryption is enabled only where encrypted manifests are consumed.
+
+Radio has an additional content reconciliation path that is independent of Flux:
+
+```mermaid
+flowchart LR
+    edit["Edit radio-library"] --> push["Push to Forgejo main"]
+    push --> cron["radio-library-sync CronJob<br/>every 5 minutes"]
+    cron --> validate["Git LFS pull + fsck<br/>release validation"]
+    validate --> release["Immutable release directory"]
+    release --> current["Atomic current symlink"]
+    current --> liquidsoap["Liquidsoap<br/>reload every 60 seconds"]
+```
+
+This lets music changes become live without restarting Liquidsoap or interrupting the Icecast source connection.
 
 ## Working with the repository
 
@@ -124,16 +159,19 @@ Expected result:
 - [Operations and recovery](docs/operations.md)
 - [Monitoring and logging](docs/monitoring.md)
 - [Minecraft](docs/minecraft.md)
+- [Radio](docs/radio.md)
 - [Renovate](docs/renovate.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Safety principles
 
 - Git is the source of truth; avoid routine imperative changes to managed resources.
-- Never commit plaintext credentials or decrypted SOPS output.
-- Persistent Minecraft resources use both `Retain` and Flux prune protection.
+- Never commit plaintext credentials, access tokens, private keys, or decrypted SOPS output.
+- Persistent Minecraft and Radio resources use retained local storage and Flux prune protection where appropriate.
 - Inspect rendered manifests before merging.
 - Treat node-bound local storage as non-portable and back it up independently.
+- Radio library changes are content changes, but they are still versioned in Git and should be recoverable by reverting a commit.
+- Private OCI registry credentials are read-only inside Kubernetes; image publishing uses a separate credential.
 
 ## License
 
