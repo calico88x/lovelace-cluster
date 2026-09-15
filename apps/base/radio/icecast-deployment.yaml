@@ -47,7 +47,7 @@ spec:
               value: "4"
 
         - name: icecast-exporter
-          image: python:3.13-alpine
+          image: python:3.14-alpine
           command:
             - python
             - /opt/icecast-exporter/icecast-exporter.py
