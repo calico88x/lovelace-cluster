@@ -16,25 +16,35 @@ spec:
       containers:
         - name: liquidsoap
           image: savonet/liquidsoap:v2.4.5
+
+          ports:
+            - name: metrics
+              containerPort: 9599
+
           args:
             - /etc/liquidsoap/radio.liq
+
           env:
             - name: ICECAST_SOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: icecast-auth
                   key: source-password
+
           volumeMounts:
             - name: config
               mountPath: /etc/liquidsoap
               readOnly: true
+
             - name: music
               mountPath: /music
               readOnly: true
+
       volumes:
         - name: config
           configMap:
             name: liquidsoap-config
+
         - name: music
           persistentVolumeClaim:
             claimName: radio-music

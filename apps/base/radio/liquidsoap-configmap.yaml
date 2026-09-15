@@ -5,6 +5,9 @@ metadata:
   namespace: radio
 data:
   radio.liq: |
+    settings.prometheus.server := true
+    settings.prometheus.server.port := 9599
+
     music = mksafe(
       playlist(
         mode="random",
