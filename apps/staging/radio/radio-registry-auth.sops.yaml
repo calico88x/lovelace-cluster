@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: radio-registry-auth
+    namespace: radio
+type: kubernetes.io/dockerconfigjson
+stringData:
+    .dockerconfigjson: ENC[AES256_GCM,data:m68I8hESczFW6g4w0yZY7BUVe/I3VIj32LMKhZ114y4N38s+FLc1lKTjQRUnCjHosIDXbyouaXHGa5oKtk36CbesZYl9RzbAdHjz4C3R2frzMZs4CdeuJmHIpDGzV0lCbbIkRW6nPXWHuP6coFGYiKgs3PlYE50yGo+OlPD6Vla1BhIZyP1GCYUfeP2n7bDig4zRvURP,iv:FmRULcyWVtP//QHNVZM98oI0WXk+XEXdW7lSSaZwyUs=,tag:f/vTIac2zLeQTNB5e9NMfw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBCd3J5K0tXUmtZVmtwazRk
+            Z1Bib3d2aTlpYkgweHJjK3Y3V2JiRHZRN2hjCjI2NUZBK0Zxei9XbzNNZkl1cFp1
+            d21SZUxqaXF6aitPMzJyMldSTWw5VXMKLS0tIExMSlJrZ2dlbDRwcVE2U2NhUVl2
+            dFA3Y2s2WFJaMFJVVERCandIWW51aTAKhqYlpshKqyRimogIm0YtYgyWgRnlbTWV
+            s6970nBMoM9O/81PudaPcTQVaewb/C8IvcdvBlBdGJF5JC6UygDR1A==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1jtcsfjakcl2pfnl78ss0l4dgfk0vyfdqel2u95x67p809c3eyfrs0u6xt2
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-15T01:47:07Z"
+    mac: ENC[AES256_GCM,data:ioQFnl5YbkoK9nj4yYJiUACKM9L6/g6uIhUqX8OAQgAGQeXYxPx/QeIEy/4T7MDE9sp54uCubcPVDcQWtEIUUejsQL8+gfO+aRsSH8rmVIcQZTmZBkI8Cjs4mOgqqkroc2LzFqGnzh5cmYJj8Y6c9It8DIFc2j1yMjSt+VOYddo=,iv:u3L9Ff7nnc8MfSVy/PQBMTzKfbfyS0Oq7Y54bPyO2BQ=,tag:aBMq0Aijs2/gKOrEHwbC7g==,type:str]
+    version: 3.13.2

@@ -7,6 +7,7 @@ resources:
   - persistentvolume.yaml
   - icecast-auth.sops.yaml
   - radio-library-ssh.sops.yaml
+  - radio-registry-auth.sops.yaml
   - radio-tls.sops.yaml
   - ingress.yaml
   - certificate-production.yaml
