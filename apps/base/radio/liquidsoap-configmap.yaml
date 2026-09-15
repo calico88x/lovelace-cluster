@@ -38,8 +38,11 @@ data:
       update_playlist_ready
     )
 
-    prometheus.latency(
-      labels=[],
+    playlist_latency_metric = prometheus.latency(
+      labels=[]
+    )
+
+    playlist_latency_metric(
       label_values=[],
       playlist_source
     )
