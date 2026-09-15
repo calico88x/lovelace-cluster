@@ -8,12 +8,40 @@ data:
     settings.prometheus.server := true
     settings.prometheus.server.port := 9599
 
-    music = mksafe(
-      playlist(
-        mode="random",
-        reload=60,
-        "/music/current/music"
-      )
+    playlist_source = playlist(
+      id="radio_playlist",
+      mode="random",
+      reload=60,
+      "/music/current/music"
+    )
+
+    music = mksafe(playlist_source)
+
+    playlist_ready_metric = prometheus.gauge(
+      labels=[],
+      help="Whether the radio playlist source is ready.",
+      "radio_playlist_ready"
+    )
+
+    set_playlist_ready = playlist_ready_metric(label_values=[])
+
+    def update_playlist_ready() =
+      if source.is_ready(playlist_source) then
+        set_playlist_ready(1.)
+      else
+        set_playlist_ready(0.)
+      end
+    end
+
+    thread.run(
+      every=5.,
+      update_playlist_ready
+    )
+
+    prometheus.latency(
+      labels=[],
+      label_values=[],
+      playlist_source
     )
 
     output.icecast(
