@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - liquidsoap-servicemonitor.yaml
+  - icecast-servicemonitor.yaml

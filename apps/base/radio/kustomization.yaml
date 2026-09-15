@@ -1,6 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: radio
+
 resources:
   - namespace.yaml
   - storage.yaml
@@ -9,3 +11,8 @@ resources:
   - liquidsoap-configmap.yaml
   - liquidsoap-deployment.yaml
   - liquidsoap-service.yaml
+
+configMapGenerator:
+  - name: icecast-exporter
+    files:
+      - icecast-exporter.py
