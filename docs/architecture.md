@@ -125,7 +125,7 @@ sequenceDiagram
     C->>N: Validate tracked count == published count
     C->>P: Atomically replace symlink
     L->>P: Reload playlist
-    C->>C: Keep current + previous; prune older releases
+    C->>C: Keep current + previous and prune older releases
 ```
 
 The reconciler uses both Kubernetes `concurrencyPolicy: Forbid` and a filesystem `flock`. The Kubernetes policy prevents normal scheduled overlap; the filesystem lock also protects against a manually-created Job racing the scheduled Job.
