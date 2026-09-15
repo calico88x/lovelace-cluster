@@ -17,10 +17,13 @@ spec:
         name: kube-prometheus-stack
         namespace: monitoring
       interval: 12h
+
   install:
     crds: Create
+
   upgrade:
     crds: CreateReplace # useful because CRDs need to be deleted when updating versions
+
   driftDetection:
     mode: enabled
     ignore:
@@ -28,6 +31,7 @@ spec:
       - paths: ["/metadata/annotations/prometheus-operator-validated"]
         target:
           kind: PrometheusRule
+
   values:
     grafana:
       admin:
@@ -50,3 +54,15 @@ spec:
           - secretName: grafana-tls-secret
             hosts:
               - lovelace-grafana.caliconet.lab
+
+    prometheus:
+      prometheusSpec:
+        remoteWrite:
+          - url: http://192.168.3.120:9090/api/v1/write
+            writeRelabelConfigs:
+              - sourceLabels:
+                  - namespace
+                  - job
+                separator: ";"
+                regex: "radio;(liquidsoap-metrics|icecast)"
+                action: keep
