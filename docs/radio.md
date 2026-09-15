@@ -50,6 +50,7 @@ The radio resources are under:
 apps/base/radio/
 apps/staging/radio/
 images/radio-library-sync/
+monitoring/configs/staging/radio/
 ```
 
 Important objects:
