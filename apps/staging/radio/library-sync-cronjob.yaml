@@ -6,7 +6,7 @@ metadata:
 
 spec:
   schedule: "*/5 * * * *"
-  suspend: false
+  suspend: true
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
@@ -41,47 +41,109 @@ spec:
                     -o UserKnownHostsFile=/ssh/known_hosts \
                     -o StrictHostKeyChecking=yes"
 
-                  REPO="ssh://git@forgejo.caliconet.lab:2222/NovaLabs/radio-library.git"
-                  DEST="/library/radio-library"
-                  TMP="/library/.radio-library.tmp"
+                  ROOT="/library"
+                  REPO="${ROOT}/repo"
+                  RELEASES="${ROOT}/releases"
+                  CURRENT="${ROOT}/current"
 
                   git lfs install --skip-repo
 
-                  if ! git -C "${DEST}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                    echo "Initial radio library clone"
-
-                    rm -rf "${TMP}"
-
-                    GIT_LFS_SKIP_SMUDGE=1 \
-                      git clone \
-                        --branch main \
-                        --single-branch \
-                        "${REPO}" \
-                        "${TMP}"
-
-                    cd "${TMP}"
-                    git lfs pull
-                    cd /
-
-                    if [ -e "${DEST}" ]; then
-                      rm -rf "${DEST}"
-                    fi
-
-                    mv "${TMP}" "${DEST}"
-                  else
-                    echo "Reconciling existing radio library"
-
-                    git -C "${DEST}" fetch --prune origin main
-                    git -C "${DEST}" reset --hard origin/main
-
-                    cd "${DEST}"
-                    git lfs pull
-                    git clean -fdx
-                    cd /
+                  if ! git -C "${REPO}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+                    echo "ERROR: ${REPO} is not a valid Git checkout"
+                    exit 1
                   fi
 
-                  echo "Radio library synchronized to commit:"
-                  git -C "${DEST}" rev-parse --short HEAD
+                  mkdir -p "${RELEASES}"
+
+                  git -C "${REPO}" fetch --prune origin main
+
+                  TARGET_COMMIT="$(git -C "${REPO}" rev-parse origin/main)"
+                  TARGET_RELEASE="${RELEASES}/${TARGET_COMMIT}"
+
+                  CURRENT_TARGET=""
+                  if [ -L "${CURRENT}" ]; then
+                    CURRENT_TARGET="$(readlink "${CURRENT}")"
+                  fi
+
+                  if [ "${CURRENT_TARGET}" = "releases/${TARGET_COMMIT}" ] \
+                    && [ -d "${TARGET_RELEASE}/music" ]; then
+                    echo "Library already current at ${TARGET_COMMIT}"
+                    exit 0
+                  fi
+
+                  echo "Preparing library commit ${TARGET_COMMIT}"
+
+                  GIT_LFS_SKIP_SMUDGE=1 \
+                    git -C "${REPO}" reset --hard "${TARGET_COMMIT}"
+
+                  cd "${REPO}"
+                  git lfs pull
+                  git lfs fsck
+                  cd /
+
+                  TMP_RELEASE="${RELEASES}/.${TARGET_COMMIT}.tmp"
+
+                  rm -rf "${TMP_RELEASE}"
+                  mkdir -p "${TMP_RELEASE}"
+
+                  cp -a "${REPO}/music" "${TMP_RELEASE}/music"
+
+                  if [ -d "${REPO}/idents" ]; then
+                    cp -a "${REPO}/idents" "${TMP_RELEASE}/idents"
+                  fi
+
+                  if [ -d "${REPO}/specials" ]; then
+                    cp -a "${REPO}/specials" "${TMP_RELEASE}/specials"
+                  fi
+
+                  TRACKED_COUNT="$(
+                    git -C "${REPO}" ls-files 'music/*' |
+                    wc -l |
+                    tr -d ' '
+                  )"
+
+                  RELEASE_COUNT="$(
+                    find "${TMP_RELEASE}/music" -type f |
+                    wc -l |
+                    tr -d ' '
+                  )"
+
+                  echo "Tracked music files:   ${TRACKED_COUNT}"
+                  echo "Published music files: ${RELEASE_COUNT}"
+
+                  if [ "${TRACKED_COUNT}" -eq 0 ] \
+                    || [ "${TRACKED_COUNT}" -ne "${RELEASE_COUNT}" ]; then
+                    echo "ERROR: release validation failed"
+                    exit 1
+                  fi
+
+                  if [ ! -d "${TARGET_RELEASE}" ]; then
+                    mv "${TMP_RELEASE}" "${TARGET_RELEASE}"
+                  else
+                    rm -rf "${TMP_RELEASE}"
+                  fi
+
+                  if [ -e "${CURRENT}" ] && [ ! -L "${CURRENT}" ]; then
+                    echo "ERROR: ${CURRENT} exists and is not a symlink"
+                    exit 1
+                  fi
+
+                  NEXT_LINK="${ROOT}/.current.${TARGET_COMMIT}"
+
+                  rm -f "${NEXT_LINK}"
+                  ln -s "releases/${TARGET_COMMIT}" "${NEXT_LINK}"
+
+                  # Atomic promotion: Liquidsoap sees either the old
+                  # release or the new release, never a half-built one.
+                  mv -f "${NEXT_LINK}" "${CURRENT}"
+
+                  cd "${REPO}"
+                  git lfs prune
+                  cd /
+
+                  echo "Published radio library:"
+                  echo "${TARGET_COMMIT}"
+                  echo "Current -> $(readlink "${CURRENT}")"
 
               volumeMounts:
                 - name: music
