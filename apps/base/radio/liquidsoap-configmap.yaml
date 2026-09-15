@@ -9,7 +9,7 @@ data:
       playlist(
         mode="random",
         reload=60,
-        "/music/radio-library/music"
+        "/music/current/music"
       )
     )
 
