@@ -6,18 +6,22 @@ spec:
   selector:
     matchLabels:
       app: cloudflared
-  replicas: 1 # was 2, You could also consider elastic scaling for this deployment
+  replicas: 1
+
   template:
     metadata:
       labels:
         app: cloudflared
+
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: lovelace
+
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.9.3
           args:
             - tunnel
-
             # Points cloudflared to the config file, which configures what
             # cloudflared will actually do. This file is created by a ConfigMap
             # below.
