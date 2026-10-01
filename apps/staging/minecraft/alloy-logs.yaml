@@ -148,6 +148,9 @@ spec:
         app: alloy-minecraft-logs
 
     spec:
+      nodeSelector:
+        novalabs.io/node-pool: worker
+
       serviceAccountName: alloy-minecraft-logs
       terminationGracePeriodSeconds: 30
 

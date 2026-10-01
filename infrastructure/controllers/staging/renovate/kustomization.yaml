@@ -3,3 +3,7 @@ kind: Kustomization
 namespace: renovate
 resources:
   - ../../base/renovate/
+patches:
+  - path: scheduling.patch.yaml
+    target:
+      kind: CronJob

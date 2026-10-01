@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icecast
+  namespace: radio
+spec:
+  template:
+    spec:
+      nodeSelector:
+        novalabs.io/node-pool: core

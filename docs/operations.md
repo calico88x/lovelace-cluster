@@ -64,8 +64,18 @@ Confirm labels before diagnosing scheduling:
 ```bash
 kubectl get nodes --show-labels
 ```
+The logical scheduling pools currently require these node labels:
 
-Minecraft requires `workload=minecraft` on `k8s-worker-01`. Its static PV also has node affinity for that hostname. Relocating Minecraft therefore requires coordinated changes to workload placement, storage, and data.
+```text
+lovelace        novalabs.io/node-pool=core
+k8s-worker-01   novalabs.io/node-pool=worker
+```
+
+These labels are consumed by stateless workload scheduling patches. Node-local stateful workloads such as Minecraft, Minecraft Create, Liquidsoap, and radio-library-sync use explicit `kubernetes.io/hostname` placement instead.
+
+If a node is rebuilt or rejoined to the cluster, restore its logical pool label before allowing Flux-managed workloads to reconcile onto it.
+
+Minecraft and Minecraft Create are explicitly pinned to `k8s-worker-01` using `kubernetes.io/hostname`. Their static local PersistentVolumes also have node affinity for that hostname. Relocating either workload therefore requires coordinated changes to workload placement, storage, and data.
 
 Before planned node maintenance:
 

@@ -14,9 +14,6 @@ spec:
         app: cloudflared
 
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: lovelace
-
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.9.3

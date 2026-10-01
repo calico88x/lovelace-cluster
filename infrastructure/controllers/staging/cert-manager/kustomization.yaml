@@ -6,3 +6,8 @@ resources:
   - cloudflare-api-token.sops.yaml
   - clusterissuer-staging.yaml
   - clusterissuer-production.yaml
+patches:
+  - path: scheduling.patch.yaml
+    target:
+      kind: HelmRelease
+      name: cert-manager

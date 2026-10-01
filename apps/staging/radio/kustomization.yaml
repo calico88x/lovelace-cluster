@@ -16,3 +16,6 @@ resources:
 
 patches:
   - path: storage.patch.yaml
+  - path: liquidsoap-scheduling.patch.yaml
+  - path: library-sync-scheduling.patch.yaml
+  - path: icecast-scheduling.patch.yaml

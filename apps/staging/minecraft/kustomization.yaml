@@ -15,6 +15,7 @@ patches:
   - path: statefulset.patch.yaml
   - path: configmap.patch.yaml
   - path: create-anti-affinity.patch.yaml
+  - path: playit-scheduling.patch.yaml
 
 # Paper is stopped while Create is active. The shared Playit agent is
 # deliberately omitted and remains running.

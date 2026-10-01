@@ -8,7 +8,7 @@ spec:
   restartPolicy: Never
 
   nodeSelector:
-    workload: minecraft
+    kubernetes.io/hostname: k8s-worker-01
 
   containers:
     - name: maintenance

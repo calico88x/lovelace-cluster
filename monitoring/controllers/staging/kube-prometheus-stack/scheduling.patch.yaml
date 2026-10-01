@@ -1,0 +1,33 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  values:
+    grafana:
+      nodeSelector:
+        novalabs.io/node-pool: core
+
+    kube-state-metrics:
+      nodeSelector:
+        novalabs.io/node-pool: core
+
+    prometheusOperator:
+      nodeSelector:
+        novalabs.io/node-pool: core
+
+      admissionWebhooks:
+        patch:
+          nodeSelector:
+            novalabs.io/node-pool: core
+
+    prometheus:
+      prometheusSpec:
+        nodeSelector:
+          novalabs.io/node-pool: core
+
+    alertmanager:
+      alertmanagerSpec:
+        nodeSelector:
+          novalabs.io/node-pool: core
