@@ -11,7 +11,22 @@ Lovelace is designed as a compact production-style learning environment. It demo
 | `lovelace` | ARM64 | Debian on Raspberry Pi 5 | k3s server/control plane | Flux and general cluster services |
 | `k8s-worker-01` | x86_64 | Debian VM | k3s agent/worker | Minecraft, Radio, and their node-local data |
 
-Minecraft selects the worker through a workload label. Radio is bound to the worker indirectly through the node affinity of its local PersistentVolume.
+Minecraft and Minecraft Create are explicitly pinned to `k8s-worker-01` because their static local PersistentVolumes are tied to that node. Radio uses the same node-local storage model for Liquidsoap and library synchronization, while stateless services such as Icecast use logical node-pool placement.
+
+### Scheduling model
+
+General stateless workloads use logical node-pool labels:
+
+| Node | Node-pool label |
+| --- | --- |
+| `lovelace` | `novalabs.io/node-pool=core` |
+| `k8s-worker-01` | `novalabs.io/node-pool=worker` |
+
+Additional worker nodes may share `novalabs.io/node-pool=worker`, allowing eligible stateless workloads to schedule across the worker pool without referring to individual hostnames.
+
+Workloads that depend on node-local persistent storage are instead pinned explicitly with `kubernetes.io/hostname`. This currently applies to the Minecraft, Minecraft Create, Liquidsoap, and radio-library-sync workloads because their retained data exists specifically on `k8s-worker-01`.
+
+Per-node infrastructure such as node-exporter remains unconstrained by these pools and runs according to its DaemonSet semantics.
 
 ## Control and delivery planes
 

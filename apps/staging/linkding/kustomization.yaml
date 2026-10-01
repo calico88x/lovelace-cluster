@@ -9,3 +9,7 @@ resources:
   - ingress.yaml
 patches:
   - path: deployment-env.patch.yaml
+
+  - path: scheduling.patch.yaml
+    target:
+      kind: Deployment

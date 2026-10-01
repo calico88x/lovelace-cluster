@@ -103,6 +103,8 @@ The Kubernetes local PersistentVolume exposes:
 
 The PersistentVolume advertises 90 GiB and is pinned to `k8s-worker-01`.
 
+The Minecraft Create StatefulSet is also explicitly pinned to `k8s-worker-01` using `kubernetes.io/hostname`, matching the PersistentVolume node affinity and making the storage dependency explicit in both the workload and storage manifests.
+
 The data directory uses UID/GID `1000:1000` with mode `2775`, matching the Minecraft container and existing Paper storage.
 
 The PersistentVolume uses the `Retain` reclaim policy. Both the PersistentVolume and PersistentVolumeClaim are protected from Flux pruning.

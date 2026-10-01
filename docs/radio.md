@@ -74,6 +74,25 @@ Important objects:
 
 All Secret manifests committed to this public repository must remain SOPS-encrypted.
 
+## Placement
+
+Radio intentionally spans both scheduling models used by Lovelace.
+
+Storage-bound workloads are pinned directly to `k8s-worker-01`:
+
+- `Deployment/liquidsoap`
+- `CronJob/radio-library-sync`
+
+Both depend on the `radio-music` local PersistentVolume at `/srv/radio/music`, whose node affinity also targets `k8s-worker-01`.
+
+The stateless `Deployment/icecast` uses the logical core pool instead:
+
+```text
+novalabs.io/node-pool=core
+```
+
+This keeps the storage dependency explicit while allowing stateless radio components to follow the cluster's logical scheduling model.
+
 ## Playback configuration
 
 Liquidsoap currently:

@@ -149,6 +149,9 @@ spec:
         app.kubernetes.io/part-of: minecraft-servers
 
     spec:
+      nodeSelector:
+        novalabs.io/node-pool: worker
+
       serviceAccountName: alloy-minecraft-create-logs
       terminationGracePeriodSeconds: 30
 

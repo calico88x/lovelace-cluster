@@ -1,0 +1,21 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  values:
+    nodeSelector:
+      novalabs.io/node-pool: core
+
+    webhook:
+      nodeSelector:
+        novalabs.io/node-pool: core
+
+    cainjector:
+      nodeSelector:
+        novalabs.io/node-pool: core
+
+    startupapicheck:
+      nodeSelector:
+        novalabs.io/node-pool: core

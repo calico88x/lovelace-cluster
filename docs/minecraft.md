@@ -19,11 +19,13 @@ Minecraft Paper is a stateful GitOps-managed workload in the `minecraft` namespa
 
 ## Placement and resources
 
-The StatefulSet selects nodes labeled:
+The StatefulSet is explicitly pinned to:
 
 ```text
-workload=minecraft
+kubernetes.io/hostname=k8s-worker-01
 ```
+
+This matches the node affinity of the static local PersistentVolume containing the Minecraft world data.
 
 The staging overlay requests two CPU cores and 4 GiB of memory, with a 6 GiB memory limit. The Minecraft JVM is configured for a 4 GiB working allocation.
 
@@ -31,7 +33,8 @@ Verify placement:
 
 ```bash
 kubectl get pods -n minecraft -o wide
-kubectl get node k8s-worker-01 -o jsonpath='{.metadata.labels.workload}{"\n"}'
+kubectl get node k8s-worker-01 \
+  -o jsonpath='{.metadata.labels.kubernetes\.io/hostname}{"\n"}'
 ```
 
 ## Persistent world data
@@ -113,7 +116,7 @@ Operational manifest for manual maintenance tasks is stored under `operations/mi
 
 1. Restore the filesystem containing `/srv/minecraft/data` on `k8s-worker-01`.
 2. Confirm ownership is UID/GID `1000:1000`.
-3. Confirm the node hostname and `workload=minecraft` label.
+3. Confirm that the storage remains on `k8s-worker-01` and that the node hostname is unchanged.
 4. Allow Flux to recreate the StorageClass, PV, PVC, StatefulSet, Services, Playit, and Alloy resources.
 5. Verify the PVC is `Bound` before expecting the pod to start.
 6. Confirm the Paper log reports a completed startup.

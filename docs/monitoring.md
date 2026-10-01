@@ -21,6 +21,25 @@ lovelace-grafana.caliconet.lab
 
 Its administrator credentials are supplied by the SOPS-encrypted `grafana-admin` Secret. Grafana currently uses `emptyDir` storage intentionally. Provisioned dashboards return after restart, but dashboards created manually in the UI are ephemeral.
 
+## Placement
+
+The central kube-prometheus-stack components use the logical core node pool:
+
+- Grafana
+- Prometheus
+- Alertmanager
+- Prometheus Operator
+- kube-state-metrics
+- Prometheus Operator admission-webhook jobs
+
+These workloads select:
+
+```text
+novalabs.io/node-pool=core
+```
+
+`prometheus-node-exporter` is intentionally excluded from this constraint. It runs as a DaemonSet and should remain present on every eligible cluster node so host-level metrics are collected from both the control plane and workers.
+
 ## Minecraft metrics
 
 The Minecraft Service exposes:
