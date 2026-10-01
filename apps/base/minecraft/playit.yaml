@@ -24,7 +24,7 @@ spec:
 
       containers:
         - name: playit
-          image: ghcr.io/playit-cloud/playit-agent:1.0.10
+          image: ghcr.io/playit-cloud/playit-agent:1.0.12
           imagePullPolicy: IfNotPresent
 
           env:
