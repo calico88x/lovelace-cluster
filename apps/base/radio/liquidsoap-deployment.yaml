@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: liquidsoap
-          image: savonet/liquidsoap:v2.4.5
+          image: savonet/liquidsoap:v2.4.6
 
           ports:
             - name: metrics
