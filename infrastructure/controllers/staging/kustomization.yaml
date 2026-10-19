@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - renovate
   - cert-manager
+  - coredns
