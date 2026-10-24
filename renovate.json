@@ -4,5 +4,17 @@
         "fileMatch": [
             "\\.yaml$"
         ]
-    }
+    },
+    "packageRules": [
+        {
+            "description": "Manage generated Flux components as a coordinated release",
+            "matchManagers": [
+                "kubernetes"
+            ],
+            "matchFileNames": [
+                "clusters/staging/flux-system/gotk-components.yaml"
+            ],
+            "enabled": false
+        }
+    ]
 }
