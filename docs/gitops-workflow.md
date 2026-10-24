@@ -49,6 +49,23 @@ The manifests under `clusters/staging` define the reconciliation boundaries:
 
 Do not edit generated Flux bootstrap components casually. Application and platform changes normally belong under `apps`, `infrastructure`, or `monitoring`.
 
+### Flux system upgrades
+
+The Flux installation is managed as a coordinated release.
+
+- `gotk-components.yaml` contains generated controller Deployments,
+  CRDs, RBAC, and supporting resources.
+- Renovate's Flux manager handles installation release updates.
+- Renovate's Kubernetes manager must not independently update
+  controller images in the generated manifest.
+- Review release notes, API changes, and CRD compatibility before
+  merging Flux upgrades.
+- Preserve the existing bootstrap configuration and scheduling
+  overlays when regenerating manifests.
+- Validate controller readiness and reconciliation after upgrades.
+
+Do not manually upgrade individual Flux controller image tags.
+
 ## Reconciliation behavior
 
 The primary Flux Kustomizations reconcile every minute, retry every minute, and use a five-minute timeout. Pruning is enabled generally, with explicit protection on the Minecraft PV and PVC.
