@@ -25,6 +25,29 @@ The API token is loaded from the SOPS-encrypted `renovate-container-env` Secret.
 
 The root `renovate.json` enables Kubernetes YAML discovery. Renovate inspects applicable manifests and proposes image-tag updates as pull requests.
 
+### Flux installation update policy
+
+The root `renovate.json` disables the **Kubernetes manager** for
+`clusters/staging/flux-system/gotk-components.yaml`. This prevents
+independent updates of controller image tags without their matching CRDs.
+The **Flux manager** remains enabled to propose coordinated `fluxcd/flux2`
+release updates. Do not disable it merely because it opens a Flux upgrade
+PR; review these PRs under the [Flux system upgrade procedure](gitops-workflow.md#flux-system-upgrades).
+
+The `fluxcd/flux2` release version is a **bundle version**, not a single
+runtime image tag. Renovate regenerates `gotk-components.yaml`; Flux then
+applies that desired state after the PR is merged. No Flux controller
+images should be individually upgraded through Renovate's Kubernetes manager.
+
+### Rebase/retry requests
+
+For an out-of-date Renovate PR, check the **rebase/retry** box in its PR
+description. This is a request, not an immediate Git operation: the hourly
+Renovate CronJob processes it and may force-push a refreshed commit. After
+that run, fetch the PR branch, confirm it is current with `main`, and
+revalidate its final revision before merging. Do not confuse Forgejo's
+**Update branch** action with the actual **Merge pull request** operation.
+
 ## Trigger a manual run
 
 Create a one-off Job from the CronJob:
