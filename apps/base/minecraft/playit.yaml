@@ -47,5 +47,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+              # Playit >=1.1.0 requires CAP_CHOWN to assign
+              # its IPC socket to the playit group at startup.
+              add:
+                - CHOWN
             seccompProfile:
               type: RuntimeDefault
