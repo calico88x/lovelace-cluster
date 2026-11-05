@@ -148,6 +148,37 @@ five Kustomizations returned Ready, and `flux check` passed after updating
 the standalone CLI to v2.10.0. Baseline `main`: `4b645be3`;
 post-merge revision: `5df0ad5e`.
 
+## Topology Explorer Kubernetes access
+
+The `infrastructure-controllers` Flux Kustomization manages
+the Topology Explorer reader policy.
+
+- Base: `infrastructure/controllers/base/topology-reader`
+- Staging: `infrastructure/controllers/staging/topology-reader`
+- Namespace: `topology-system`
+- ServiceAccount: `topology-reader`
+
+The ClusterRole permits only cluster-wide `list` operations
+on Nodes, Pods, Services, and EndpointSlices.
+
+It does not grant access to Secrets, workload mutation,
+or ServiceAccount token creation.
+
+The same RBAC policy was deployed and authorization-tested
+on OpsLab on 2026-11-05.
+
+Lovelace deployment requires a reviewed Forgejo pull request
+and successful Flux reconciliation.
+
+Never commit kubeconfigs, ServiceAccount tokens, private
+keys, or other plaintext credentials.
+
+Validate the staging configuration using
+`kubectl kustomize infrastructure/controllers/staging`.
+
+After Flux reconciliation, verify the ServiceAccount's
+effective permissions before issuing external credentials.
+
 ## Reconciliation behavior
 
 The primary Flux Kustomizations reconcile every minute, retry every minute, and use a five-minute timeout. Pruning is enabled generally, with explicit protection on the Minecraft PV and PVC.
