@@ -158,14 +158,20 @@ the Topology Explorer reader policy.
 - Namespace: `topology-system`
 - ServiceAccount: `topology-reader`
 
-The ClusterRole permits only cluster-wide `list` operations
-on Nodes, Pods, Services, and EndpointSlices.
+The ClusterRole permits cluster-wide `list` operations on ten
+Kubernetes resource types:
+
+- Core: Nodes, Pods, Services
+- Discovery: EndpointSlices
+- Apps: Deployments, ReplicaSets, StatefulSets, DaemonSets
+- Batch: Jobs, CronJobs
 
 It does not grant access to Secrets, workload mutation,
 or ServiceAccount token creation.
 
-The same RBAC policy was deployed and authorization-tested
-on OpsLab on 2026-11-05.
+Lovelace's expanded RBAC policy is managed through FluxCD.
+OpsLab's equivalent policy was expanded and authorization-tested
+on 2026-11-07.
 
 Lovelace deployment requires a reviewed Forgejo pull request
 and successful Flux reconciliation.
@@ -178,6 +184,29 @@ Validate the staging configuration using
 
 After Flux reconciliation, verify the ServiceAccount's
 effective permissions before issuing external credentials.
+
+## Workload revision history
+
+Application workloads explicitly configure revision history retention
+to prevent unnecessary accumulation of historical Kubernetes objects.
+
+- Standard application Deployments: `revisionHistoryLimit: 3`
+- Application StatefulSets: `revisionHistoryLimit: 3`
+- Alloy logging Deployments: `revisionHistoryLimit: 2`
+- Infrastructure and Helm-managed workloads: retain their
+  independently managed policies
+- K3s-managed system Deployments: preserve K3s defaults
+
+For Deployments, the setting controls historical ReplicaSets.
+For StatefulSets, it controls historical ControllerRevisions.
+
+Kubernetes automatically removes excess historical revisions
+when the workload meets the controller's cleanup conditions.
+
+Retention changes must be made through the appropriate GitOps
+source of truth, not by manually deleting historical resources.
+
+Revision history is not a replacement for Git history or backups.
 
 ## Reconciliation behavior
 

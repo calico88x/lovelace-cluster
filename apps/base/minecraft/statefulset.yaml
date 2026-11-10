@@ -6,6 +6,7 @@ metadata:
 spec:
   serviceName: minecraft-headless
   replicas: 1
+  revisionHistoryLimit: 3
 
   selector:
     matchLabels:
