@@ -8,10 +8,35 @@ Key characteristics:
 
 - Application port `9090`
 - Runtime UID/GID `33` (`www-data`)
-- 1 GiB PVC mounted at `/etc/linkding/data`
+- Production PVC `linkding-data-pvc` (1 GiB), mounted at `/etc/linkding/data`, currently backed by local storage on `lovelace`
 - Superuser configuration supplied through a SOPS-encrypted Secret
 - ClusterIP Service and Traefik ingress
 - Cloudflare Tunnel with SOPS-encrypted credentials
+
+### Worker-node migration
+
+Linkding is being migrated from `lovelace` to `k8s-worker-01`
+to separate application workloads from the control plane.
+
+The migration uses two distinct PVCs:
+
+| PVC | Purpose | State |
+| --- | --- | --- |
+| `linkding-data-pvc` | Original production data on `lovelace` | Active |
+| `linkding-data-worker-pvc` | New worker-local destination | Pending initial provisioning |
+
+Both PVCs request 1 GiB of storage.
+
+The destination uses the `local-path` StorageClass with
+`WaitForFirstConsumer` volume binding. Its placement will be
+determined by the first consuming Pod's scheduling constraints.
+
+During preparation, Linkding continues using its original PVC.
+The migration must preserve all files under `/etc/linkding/data`,
+including the SQLite databases and application secret key.
+
+The original PVC must not be deleted until the migrated application
+has passed data-integrity and functional validation.
 
 ## Minecraft
 
