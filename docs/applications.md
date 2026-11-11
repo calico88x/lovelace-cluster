@@ -1,19 +1,18 @@
 # Applications
 
-## Audiobookshelf
+## Audiobookshelf (Retired)
 
-Audiobookshelf runs as a single-replica Deployment in the `audiobookshelf` namespace.
+Audiobookshelf is retired from active workloads.
 
-Key characteristics:
+The Deployment, Service, ConfigMap, Ingress, and
+Cloudflare Tunnel are removed from the desired state.
 
-- Application port `3005` sourced from a ConfigMap
-- Non-root runtime using UID/GID `1000`
-- Permission-fixing init container for mounted storage
-- Separate PVCs for configuration, metadata, audiobooks, and podcasts
-- ClusterIP Service and Traefik ingress
-- Cloudflare Tunnel with SOPS-encrypted credentials
+The namespace and four local-path PVCs are temporarily
+retained on `lovelace` for data recovery and verification.
 
-The four PVC requests are 1 GiB for configuration, 1 GiB for metadata, 20 GiB for audiobooks, and 10 GiB for podcasts.
+The original PVs use the Delete reclaim policy.
+Do not remove the namespace or PVCs until an offline
+backup has been verified and storage cleanup is approved.
 
 ## Linkding
 

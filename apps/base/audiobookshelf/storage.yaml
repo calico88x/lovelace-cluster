@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: audiobookshelf-config-pvc
   namespace: audiobookshelf
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes:
     - ReadWriteOnce
@@ -16,6 +18,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: audiobookshelf-metadata-pvc
   namespace: audiobookshelf
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes:
     - ReadWriteOnce
@@ -29,6 +33,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: audiobookshelf-audiobooks-pvc
   namespace: audiobookshelf
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes:
     - ReadWriteOnce
@@ -42,6 +48,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: audiobookshelf-podcasts-pvc
   namespace: audiobookshelf
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes:
     - ReadWriteOnce
