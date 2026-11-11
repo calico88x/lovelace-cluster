@@ -116,7 +116,7 @@ At minimum, back up:
 - `/srv/minecraft/data` from `k8s-worker-01`
 - Age private-key recovery material
 - Forgejo repository and database
-- Application PVC data for Audiobookshelf and Linkding
+- Linkding application PVC data
 - External monitoring configuration maintained on the Docker LXC
 
 Git protects desired state, not runtime data.
@@ -141,4 +141,16 @@ After the revert reaches `main`, Flux returns the cluster to the previous declar
 5. Confirm the rendered deletion scope before merging.
 6. Remove retained PVs or host data only through a separate, explicit operation.
 
-Audiobookshelf has been retired. Its namespace and four PVCs are being prepared for permanent deletion through Flux. The final cleanup must verify removal of the PVs and their local-path backing directories on lovelace.
+### Retired applications
+
+Audiobookshelf was retired in November 2026.
+
+Its namespace and four local-path PVCs were removed from
+the GitOps desired state. Following reconciliation, verify:
+
+- The `audiobookshelf` namespace no longer exists.
+- All four associated PersistentVolumes have been deleted.
+- Their backing directories under
+  `/var/lib/rancher/k3s/storage/` on `lovelace` are absent.
+
+A preliminary off-node archive was retained outside Git.

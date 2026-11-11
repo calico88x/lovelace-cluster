@@ -1,9 +1,0 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ignored
-spec:
-  template:
-    spec:
-      nodeSelector:
-        novalabs.io/node-pool: core

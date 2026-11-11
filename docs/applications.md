@@ -1,19 +1,5 @@
 # Applications
 
-## Audiobookshelf (Retired)
-
-Audiobookshelf is retired from active workloads.
-
-The Deployment, Service, ConfigMap, Ingress, and
-Cloudflare Tunnel are removed from the desired state.
-
-The namespace and four local-path PVCs are temporarily
-retained on `lovelace` for data recovery and verification.
-
-The original PVs use the Delete reclaim policy.
-Do not remove the namespace or PVCs until an offline
-backup has been verified and storage cleanup is approved.
-
 ## Linkding
 
 Linkding runs as a single-replica Deployment in the `linkding` namespace.
