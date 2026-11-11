@@ -84,7 +84,7 @@ The public radio ingress exposes only the exact `/radio.mp3` path. Icecast admin
 
 ## Storage model
 
-Audiobookshelf and Linkding use dynamically provisioned `local-path` PVCs. Their data follows the node-local behavior of the k3s local-path provisioner.
+Linkding uses a dynamically provisioned `local-path` PVC. Its data follows the node-local behavior of the k3s local-path provisioner.
 
 Minecraft uses a deliberately explicit storage design:
 

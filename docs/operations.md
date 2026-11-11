@@ -140,3 +140,5 @@ After the revert reaches `main`, Flux returns the cluster to the previous declar
 4. Remove the workload from its parent Kustomization in a pull request.
 5. Confirm the rendered deletion scope before merging.
 6. Remove retained PVs or host data only through a separate, explicit operation.
+
+Audiobookshelf storage remains temporarily retained and requires a verified backup before final deletion.
