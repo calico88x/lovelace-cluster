@@ -141,4 +141,4 @@ After the revert reaches `main`, Flux returns the cluster to the previous declar
 5. Confirm the rendered deletion scope before merging.
 6. Remove retained PVs or host data only through a separate, explicit operation.
 
-Audiobookshelf storage remains temporarily retained and requires a verified backup before final deletion.
+Audiobookshelf has been retired. Its namespace and four PVCs are being prepared for permanent deletion through Flux. The final cleanup must verify removal of the PVs and their local-path backing directories on lovelace.
