@@ -14,3 +14,7 @@ patches:
   - path: scheduling.patch.yaml
     target:
       kind: Deployment
+  - path: migration-stop.patch.yaml
+    target:
+      kind: Deployment
+      name: linkding

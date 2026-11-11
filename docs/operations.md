@@ -126,6 +126,24 @@ Git protects desired state, not runtime data.
 Linkding uses node-local persistent storage and cannot be migrated
 by changing its node selector alone.
 
+### Controlled application shutdown
+
+During the migration, the staging overlay applies
+`migration-stop.patch.yaml` to set the Linkding Deployment
+to zero replicas.
+
+This change affects only the Linkding application.
+The original PVC, destination PVC, migration helper,
+and Cloudflared Deployment remain declared.
+
+Before copying data, confirm that the Linkding Pod
+has terminated and that no process is writing to the
+original SQLite database.
+
+Remove the shutdown patch only as part of the reviewed
+worker cutover, after the destination data has been
+restored and validated.
+
 ### Storage safety
 
 - Source PVC: `linkding-data-pvc` on `lovelace`
