@@ -56,7 +56,6 @@ Never paste decrypted secret contents into pull requests, issues, logs, or chat.
 
 The repository uses SOPS for:
 
-- Audiobookshelf Cloudflare Tunnel credentials
 - Linkding Cloudflare Tunnel credentials
 - Linkding superuser configuration
 - Minecraft private configuration
