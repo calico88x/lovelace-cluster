@@ -121,6 +121,43 @@ At minimum, back up:
 
 Git protects desired state, not runtime data.
 
+## Linkding worker migration
+
+Linkding uses node-local persistent storage and cannot be migrated
+by changing its node selector alone.
+
+### Storage safety
+
+- Source PVC: `linkding-data-pvc` on `lovelace`
+- Destination PVC: `linkding-data-worker-pvc`
+- Destination node: `k8s-worker-01`
+- StorageClass: `local-path` (`WaitForFirstConsumer`)
+- Application data: `/etc/linkding/data`
+- Runtime UID/GID: `33:33`
+
+The source PersistentVolume has reclaim policy `Delete`.
+Deleting its PVC may permanently remove its backing directory.
+
+### Migration procedure
+
+1. Create the destination PVC without modifying the running Deployment.
+2. Confirm the destination is provisioned on `k8s-worker-01`
+   using a worker-scheduled consumer.
+3. Create and verify a source-data backup.
+4. Stop Linkding and confirm the application Pod has terminated.
+5. Copy the complete data directory to the destination volume.
+6. Preserve file ownership and verify SQLite database integrity.
+7. Switch Linkding to the destination PVC and worker hostname,
+   using the `Recreate` deployment strategy.
+8. Verify application readiness, bookmarks, authentication,
+   and ingress connectivity.
+9. Retain the original PVC until rollback is no longer required.
+10. Retire the original storage through a separate reviewed change.
+
+Do not run source and destination Linkding instances concurrently
+against the same database. Do not delete the original PVC during
+the migration cutover.
+
 ## Safe rollback
 
 Prefer reverting the offending commit through Forgejo:
