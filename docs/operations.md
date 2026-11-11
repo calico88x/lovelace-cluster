@@ -158,6 +158,18 @@ Do not run source and destination Linkding instances concurrently
 against the same database. Do not delete the original PVC during
 the migration cutover.
 
+### Temporary volume provisioning
+
+The destination PVC is initially provisioned using the temporary
+`linkding-worker-volume-helper` Pod defined in
+`apps/staging/linkding/volume-helper.yaml`.
+
+The helper schedules exclusively on `k8s-worker-01` and mounts
+`linkding-data-worker-pvc` to trigger `WaitForFirstConsumer` binding.
+
+Remove the helper from GitOps after migration. Removing the helper
+must not remove or prune the destination PVC.
+
 ## Safe rollback
 
 Prefer reverting the offending commit through Forgejo:

@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: linkding-worker-volume-helper
+  namespace: linkding
+  labels:
+    app.kubernetes.io/name: linkding
+    app.kubernetes.io/component: migration-helper
+spec:
+  restartPolicy: Always
+  terminationGracePeriodSeconds: 10
+
+  nodeSelector:
+    kubernetes.io/hostname: k8s-worker-01
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 33
+    runAsGroup: 33
+    fsGroup: 33
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+    - name: volume-holder
+      image: busybox:1.38
+      command:
+        - /bin/sh
+        - -c
+        - while true; do sleep 3600; done
+
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+
+      volumeMounts:
+        - name: destination-data
+          mountPath: /migration-data
+
+  volumes:
+    - name: destination-data
+      persistentVolumeClaim:
+        claimName: linkding-data-worker-pvc
