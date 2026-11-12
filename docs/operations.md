@@ -126,23 +126,33 @@ Git protects desired state, not runtime data.
 Linkding uses node-local persistent storage and cannot be migrated
 by changing its node selector alone.
 
+### Current deployment
+
+After the worker cutover:
+
+- Linkding runs on `k8s-worker-01`.
+- Its production PVC is `linkding-data-worker-pvc`.
+- Deployment strategy is `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`.
+- Cloudflared remains on the `core` node pool.
+- `linkding-data-pvc` remains on `lovelace` for rollback.
+
+The temporary shutdown patch and volume-provisioning helper
+were removed from the desired state.
+
+Verify the actual Pod placement, application readiness,
+database contents, and ingress connectivity after reconciliation.
+
 ### Controlled application shutdown
 
-During the migration, the staging overlay applies
-`migration-stop.patch.yaml` to set the Linkding Deployment
-to zero replicas.
+During the migration, the staging overlay temporarily applied
+`migration-stop.patch.yaml` to scale Linkding to zero replicas.
 
-This change affects only the Linkding application.
-The original PVC, destination PVC, migration helper,
-and Cloudflared Deployment remain declared.
+The Linkding Pod was confirmed terminated before the cold
+backup and data transfer. Cloudflared and both PVCs remained
+available throughout the migration.
 
-Before copying data, confirm that the Linkding Pod
-has terminated and that no process is writing to the
-original SQLite database.
-
-Remove the shutdown patch only as part of the reviewed
-worker cutover, after the destination data has been
-restored and validated.
+The temporary shutdown patch was removed during the worker
+cutover. The original PVC remains retained for rollback.
 
 ### Storage safety
 
@@ -166,7 +176,7 @@ Deleting its PVC may permanently remove its backing directory.
 5. Copy the complete data directory to the destination volume.
 6. Preserve file ownership and verify SQLite database integrity.
 7. Switch Linkding to the destination PVC and worker hostname,
-   using the `Recreate` deployment strategy.
+   using `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`.
 8. Verify application readiness, bookmarks, authentication,
    and ingress connectivity.
 9. Retain the original PVC until rollback is no longer required.
@@ -178,15 +188,18 @@ the migration cutover.
 
 ### Temporary volume provisioning
 
-The destination PVC is initially provisioned using the temporary
-`linkding-worker-volume-helper` Pod defined in
-`apps/staging/linkding/volume-helper.yaml`.
+The destination PVC was provisioned using a temporary
+`linkding-worker-volume-helper` Pod scheduled on
+`k8s-worker-01`.
 
-The helper schedules exclusively on `k8s-worker-01` and mounts
-`linkding-data-worker-pvc` to trigger `WaitForFirstConsumer` binding.
+The helper mounted `linkding-data-worker-pvc` to trigger
+`WaitForFirstConsumer` binding.
 
-Remove the helper from GitOps after migration. Removing the helper
-must not remove or prune the destination PVC.
+The resulting PersistentVolume was verified to have node
+affinity for `k8s-worker-01`.
+
+The helper manifest was removed during the worker cutover.
+The destination PVC remains permanently declared in GitOps.
 
 ## Safe rollback
 
