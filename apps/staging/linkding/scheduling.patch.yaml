@@ -6,4 +6,4 @@ spec:
   template:
     spec:
       nodeSelector:
-        novalabs.io/node-pool: core
+        novalabs.io/node-pool: worker
