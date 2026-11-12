@@ -68,7 +68,7 @@ See [Architecture](docs/architecture.md) and [Operations and recovery](docs/oper
 
 This is a selected inventory, not a full listing of Kubernetes system controllers or every application. For authoritative live placement, inspect Pods in the cluster.
 
-**Linkding storage migration:** the original `linkding-data-pvc` remains on `lovelace` temporarily as a rollback source. Its replacement, `linkding-data-worker-pvc`, is bound to `k8s-worker-01`. Linkding uses `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`, preventing surge Pods during its single-replica rollouts. Do not remove the original PVC until application data, authentication, and persistence have been verified and the rollback window has ended.
+**Linkding storage:** Linkding uses `linkding-data-worker-pvc` (1 GiB, `local-path`) on `k8s-worker-01`. The original control-plane PVC was retired following migration, with a verified cold backup retained outside Kubernetes. Linkding uses `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`, preventing surge Pods during single-replica rollouts.
 
 **Retired application:** Audiobookshelf was removed from the cluster in November 2026, including its namespace and local-path storage.
 
