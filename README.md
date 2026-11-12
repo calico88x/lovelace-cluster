@@ -1,61 +1,78 @@
 # Lovelace Cluster
 
-Lovelace is a small, heterogeneous k3s cluster managed declaratively with Flux. A Raspberry Pi 5 provides the ARM64 control plane, while a Debian x86_64 worker hosts workloads that require x86 compatibility or dedicated local storage.
+Lovelace is a two-node, heterogeneous [K3s](https://k3s.io/) Kubernetes cluster managed declaratively with [Flux](https://fluxcd.io/). A Raspberry Pi 5 provides the ARM64 control plane, and a Debian x86_64 worker runs application workloads and hosts node-local application data.
 
-Forgejo is the primary Git service. Changes are reviewed through pull requests, merged into `main`, and reconciled into the cluster by Flux. GitHub is maintained as an external mirror.
+**Forgejo is the authoritative Git repository.** Changes go through pull requests, reach `main` after review, and are reconciled by Flux. GitHub is an external mirror, not a separate deployment source.
 
 ## Architecture
 
 ```mermaid
-flowchart TD
-    operator["Operator"] -->|push / pull request| forgejo["Forgejo<br/>source of truth"]
-    renovate["Renovate CronJob"] -->|dependency PRs| forgejo
-    forgejo -->|mirror| github["GitHub mirror"]
-    forgejo -->|desired state| flux["Flux controllers"]
+flowchart LR
+    operator["Operator"] -->|Pull requests and merges| forgejo["Forgejo<br/>GitOps source of truth"]
+    renovate["Renovate<br/>dependency PRs"] --> forgejo
+    forgejo -.->|Mirror| github["GitHub"]
+    forgejo -->|GitRepository source| flux["Flux controllers"]
 
-    library["Forgejo<br/>radio-library + Git LFS"] --> radiosync
-    registry["Forgejo OCI registry<br/>radio-library-sync image"] --> radiosync
-
-    subgraph cluster["Lovelace k3s cluster"]
-        flux --> control["lovelace<br/>ARM64 control plane"]
-        flux --> worker["k8s-worker-01<br/>x86_64 worker"]
-
-        worker --> minecraft["Minecraft StatefulSet<br/>retained local storage"]
-
-        radiosync["Radio library sync CronJob"] --> radiopv["Radio local PV<br/>retained library storage"]
-        radiopv --> liquidsoap["Liquidsoap<br/>random playlist / MP3 encoding"]
-        liquidsoap --> icecast["Icecast<br/>stream server"]
-        icecast --> traefik["Traefik<br/>exact-path HTTPS ingress"]
+    subgraph cluster["Lovelace K3s cluster"]
+        direction TB
+        subgraph core["lovelace · Raspberry Pi 5 · ARM64"]
+            control["K3s control plane<br/>core services"]
+        end
+        subgraph worker["k8s-worker-01 · Debian · x86_64"]
+            cloudflared["Linkding Cloudflared"]
+            linkding["Linkding"] --> linkding_data[("Worker-local Linkding PVC")]
+            minecraft["Minecraft Paper"]
+            create["Minecraft Create"]
+            radio_sync["Radio library sync"] --> radio_data[("Retained radio PV")]
+            radio_data --> liquidsoap["Liquidsoap"] --> icecast["Icecast"]
+        end
+        traefik["Traefik ingress"]
     end
 
-    traefik --> listeners["Radio listeners"]
+    flux -->|Reconcile| control
+    flux -->|Reconcile| linkding
+    flux -->|Reconcile| minecraft
+    flux -->|Reconcile| radio_sync
+
+    cloudflared -->|In-cluster Service| linkding
+    cloudflared -->|Outbound tunnel| cloudflare["Cloudflare edge"]
+    radio_repo["Forgejo radio-library<br/>Git LFS"] -->|Content sync| radio_sync
+    listeners["Radio listeners"] -->|HTTPS| traefik --> icecast
 ```
 
-| Component | Role |
-| --- | --- |
-| `lovelace` | Raspberry Pi 5, ARM64 k3s server/control plane |
-| `k8s-worker-01` | Debian x86_64 k3s worker hosting node-local Minecraft and Radio storage |
-| Forgejo | Primary repository, pull requests, GitOps source, radio library source, and OCI registry |
-| GitHub | Push mirror for off-site visibility |
-| Flux | Reconciles applications, infrastructure, and monitoring from `main` |
-| SOPS + age | Encrypts Kubernetes Secret data committed to Git |
-| Git LFS | Stores large radio audio objects outside normal Git blobs |
-| Traefik | In-cluster HTTP/HTTPS ingress, including the public radio stream path |
+The diagram shows **logical relationships and intended workload placement**, not every Pod or packet path. Traefik, Flux, networking components, and supporting controllers have their own scheduling rules.
 
-For the complete design, see [Architecture](docs/architecture.md).
+### Nodes and placement
 
-## Managed workloads
+| Node | Platform | Node-pool label | Primary responsibility |
+| --- | --- | --- | --- |
+| `lovelace` | Raspberry Pi 5, ARM64 | `novalabs.io/node-pool=core` | K3s control plane and core cluster services |
+| `k8s-worker-01` | Debian, x86_64 | `novalabs.io/node-pool=worker` | Application workloads and node-local storage |
 
-| Workload | Namespace | Delivery | Storage | Exposure |
+Stateless Deployments generally use a **logical node-pool selector**. Stateful workloads using node-local PersistentVolumes use **`kubernetes.io/hostname` selectors** aligned with PV node affinity. Changing only a node selector does not move data between nodes.
+
+The logical node-pool labels are operational prerequisites. If a node is rebuilt or rejoins the cluster, verify and restore its label before relying on pool-based scheduling.
+
+See [Architecture](docs/architecture.md) and [Operations and recovery](docs/operations.md).
+
+## Selected managed workloads
+
+| Workload | Namespace | Scheduling / delivery | Persistent data | Access |
 | --- | --- | --- | --- | --- |
-| Audiobookshelf | `audiobookshelf` | Deployment | Four `local-path` PVCs | Traefik and Cloudflare Tunnel |
-| Linkding | `linkding` | Deployment | One `local-path` PVC | Traefik and Cloudflare Tunnel |
-| Minecraft Paper | `minecraft` | StatefulSet | Retained 60 GiB local PV on `k8s-worker-01` | Playit Tunnel |
-| Radio | `radio` | Icecast + Liquidsoap Deployments; library sync CronJob | Retained 60 GiB local PV on `k8s-worker-01` | Traefik; public exact-path HTTPS stream |
-| Renovate | `renovate` | Hourly CronJob | None | Forgejo API |
-| kube-prometheus-stack | `monitoring` | Flux HelmRelease | Grafana is intentionally ephemeral | Traefik ingress |
+| Linkding | `linkding` | Single-replica Deployment on `k8s-worker-01`; Cloudflared on the worker pool | `linkding-data-worker-pvc` (1 GiB, `local-path`) | Traefik and Cloudflare Tunnel |
+| Minecraft Paper | `minecraft` | StatefulSet on `k8s-worker-01` | Retained, node-local PV | Playit Tunnel |
+| Minecraft Create | `minecraft-create` | Stateful workload on `k8s-worker-01` | Node-local game-world storage | Cluster-specific external access configuration |
+| Radio | `radio` | Icecast and Liquidsoap Deployments; library-sync CronJob | Retained node-local music PV | Traefik; restricted public stream path |
+| Renovate | `renovate` | Hourly CronJob | No application PVC | Forgejo API |
+| kube-prometheus-stack | `monitoring` | Flux-managed HelmRelease | Grafana UI-created data is not durable | Traefik ingress |
 
-See [Applications](docs/applications.md) for workload-specific details and [Radio](docs/radio.md) for radio operations and library management.
+This is a selected inventory, not a full listing of Kubernetes system controllers or every application. For authoritative live placement, inspect Pods in the cluster.
+
+**Linkding storage migration:** the original `linkding-data-pvc` remains on `lovelace` temporarily as a rollback source. Its replacement, `linkding-data-worker-pvc`, is bound to `k8s-worker-01`. Linkding uses `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`, preventing surge Pods during its single-replica rollouts. Do not remove the original PVC until application data, authentication, and persistence have been verified and the rollback window has ended.
+
+**Retired application:** Audiobookshelf was removed from the cluster in November 2026, including its namespace and local-path storage.
+
+See [Applications](docs/applications.md), [Minecraft](docs/minecraft.md), and [Radio](docs/radio.md) for workload-specific details.
 
 ## Repository layout
 
@@ -63,92 +80,141 @@ See [Applications](docs/applications.md) for workload-specific details and [Radi
 .
 ├── apps/
 │   ├── base/                    # Reusable application resources
-│   └── staging/                 # Cluster-specific overlays and encrypted secrets
-├── clusters/staging/            # Flux entry points
-├── infrastructure/controllers/  # Platform controllers such as Renovate
+│   └── staging/                 # Lovelace overlays, patches, encrypted Secrets
+├── clusters/staging/            # Flux bootstrap and reconciliation entry points
+├── infrastructure/controllers/  # Platform controllers and automation
 ├── monitoring/
 │   ├── controllers/             # Helm repositories and releases
-│   └── configs/                 # ServiceMonitors and encrypted configuration
+│   └── configs/                 # Monitoring configuration and ServiceMonitors
 ├── images/
-│   └── radio-library-sync/      # Purpose-built radio reconciliation image
-├── docs/                        # Architecture and operational documentation
-├── CONTRIBUTING.md              # Change and validation workflow
-└── renovate.json                # Renovate repository configuration
+│   └── radio-library-sync/      # Radio reconciliation container image
+├── docs/                        # Architecture, runbooks, application guides
+├── CONTRIBUTING.md              # Contribution and validation workflow
+├── renovate.json                # Dependency update configuration
+└── README.md
 ```
 
-The `base` directories contain reusable manifests. The `staging` directories compose those resources and add environment-specific patches, storage, ingress, and encrypted secrets.
+`base` directories define shared resources. `staging` overlays compose those resources and apply Lovelace-specific scheduling, storage, ingress, and SOPS-encrypted configuration. The radio content repository is separate from this infrastructure repository.
 
-The radio library itself is intentionally separate from this infrastructure repository. Audio is stored in the Forgejo `NovaLabs/radio-library` repository and managed with Git LFS. The cluster reconciles that repository onto retained local storage through the `radio-library-sync` CronJob.
+## GitOps reconciliation
 
-## Reconciliation flow
+Flux reconciles declarative state from Forgejo `main`. The principal Kustomizations are:
 
-Flux bootstraps from `clusters/staging` and reconciles four primary areas:
-
-| Flux Kustomization | Repository path | Purpose |
+| Kustomization | Repository path | Responsibility |
 | --- | --- | --- |
-| `apps` | `./apps/staging` | User-facing workloads |
+| `apps` | `./apps/staging` | Application resources |
 | `infrastructure-controllers` | `./infrastructure/controllers/staging` | Supporting controllers and automation |
-| `monitoring-controllers` | `./monitoring/controllers/staging` | Monitoring Helm releases |
-| `monitoring-configs` | `./monitoring/configs/staging` | ServiceMonitors and encrypted monitoring configuration |
+| `monitoring-controllers` | `./monitoring/controllers/staging` | Monitoring controllers and Helm releases |
+| `monitoring-configs` | `./monitoring/configs/staging` | Monitoring configuration |
 
-All four reconcile from the same Flux `GitRepository`. SOPS decryption is enabled only where encrypted manifests are consumed.
-
-Radio has an additional content reconciliation path that is independent of Flux:
+Flux bootstrap resources live under `clusters/staging`. SOPS decryption is configured for the reconciliation paths that consume encrypted Kubernetes Secrets.
 
 ```mermaid
 flowchart LR
-    edit["Edit radio-library"] --> push["Push to Forgejo main"]
-    push --> cron["radio-library-sync CronJob<br/>every 5 minutes"]
-    cron --> validate["Git LFS pull + fsck<br/>release validation"]
-    validate --> release["Immutable release directory"]
-    release --> current["Atomic current symlink"]
-    current --> liquidsoap["Liquidsoap<br/>reload every 60 seconds"]
+    edit["Edit manifests"] --> branch["Feature branch"]
+    branch --> pr["Forgejo pull request"]
+    pr --> merge["Merge to main"]
+    merge --> source["Flux GitRepository"]
+    source --> reconcile["Flux Kustomizations"]
+    reconcile --> cluster["Kubernetes desired state"]
 ```
 
-This lets music changes become live without restarting Liquidsoap or interrupting the Icecast source connection.
+Avoid routine imperative changes to Flux-managed workloads: reconciliation can overwrite them. Use a separate, reviewed change for storage deletion, node relocation, or other potentially destructive operations.
 
-## Working with the repository
+### Radio content delivery
+
+Radio music is versioned separately in the Forgejo `NovaLabs/radio-library` repository using Git LFS. Its CronJob fetches and validates audio, publishes an immutable release directory, and atomically updates a `current` symlink. Liquidsoap can discover the updated library without restarting its Pod.
+
+```mermaid
+flowchart LR
+    edit["Update radio-library"] --> forgejo["Push to Forgejo"]
+    forgejo --> sync["radio-library-sync<br/>every 5 minutes"]
+    sync --> verify["Fetch Git LFS objects<br/>validate release"]
+    verify --> publish["Immutable release"]
+    publish --> current["Atomic current symlink"]
+    current --> liquidsoap["Liquidsoap<br/>periodic library reload"]
+    liquidsoap --> icecast["Icecast stream"]
+```
+
+For library management, rollback, and image publishing, see [Radio](docs/radio.md).
+
+## Working with this repository
 
 ### Prerequisites
 
-- Access to the Forgejo repository
+- Access to the Forgejo repository and permission to open pull requests
 - `git`
-- `kubectl` configured for the Lovelace cluster
-- `flux`
-- `sops`
-- Access to the age recipient for encryption; decryption keys remain in the cluster
+- `kubectl` with the correct Lovelace kubeconfig/context
+- `flux` CLI
+- `sops` and the appropriate public age recipient for encrypting new Secrets
 
-### Make a change
+Decryption private keys must **not** be placed in Git or shared in pull requests.
+
+### Change workflow
 
 ```bash
 git switch main
-git pull --ff-only
-git switch -c <type>/<short-description>
+git pull --ff-only origin main
+git switch -c feat/short-description
 ```
 
-Edit the appropriate base or staging overlay, validate it, commit it, and open a Forgejo pull request. Flux deploys only after the change reaches `main`.
+Edit the relevant manifests and documentation in the feature branch. Validate, review the diff, commit, push to Forgejo, and merge through a pull request. Flux deploys the merged desired state; a local branch or unmerged PR does not change the cluster.
 
-### Validate locally
+### Render and validate
+
+Render the full application reconciliation with the Flux CLI (the `apps/staging` directory is composed by Flux):
 
 ```bash
-kubectl kustomize apps/staging | kubectl apply --dry-run=client -f -
-kubectl kustomize infrastructure/controllers/staging | kubectl apply --dry-run=client -f -
-kubectl kustomize monitoring/controllers/staging | kubectl apply --dry-run=client -f -
-kubectl kustomize monitoring/configs/staging | kubectl apply --dry-run=client -f -
-git diff --check
+flux build kustomization apps --namespace flux-system --path ./apps/staging
 ```
 
-Encrypted manifests should also report an encrypted status:
+For a focused application overlay:
+
+```bash
+kubectl kustomize apps/staging/linkding
+```
+
+Review the generated resource names, selectors, storage references, and deletion scope. For resources that can safely be submitted individually, use a **server-side dry-run** to check Kubernetes API compatibility before merging; a successful local render alone does not prove that an update will be accepted by the API server.
+
+```bash
+git diff --check
+git status --short --branch
+```
+
+Before using server-side dry-run or applying resources, verify the `kubectl` context. Do not send encrypted SOPS documents directly to Kubernetes as though they were plaintext Secrets.
+
+For encrypted manifests:
 
 ```bash
 sops filestatus path/to/secret.sops.yaml
 ```
 
-Expected result:
+Expected encrypted status: `{"encrypted":true}`.
 
-```json
-{"encrypted":true}
+### Verify a reconciliation
+
+```bash
+flux get sources git -A
+flux get kustomizations -A
+flux get helmreleases -A
+kubectl get nodes -o wide
+kubectl get pods -A -o wide
 ```
+
+After storage or scheduling changes, also verify PVC/PV binding, PV node affinity, workload readiness, and actual application behavior. A `Ready` Kubernetes resource does not by itself prove data integrity or functional correctness.
+
+See [GitOps workflow](docs/gitops-workflow.md) and [Contributing](CONTRIBUTING.md).
+
+## Secrets, storage, and recovery
+
+- **SOPS + age:** commit only encrypted Secret manifests; keep age identities and recovery material outside the repository.
+- **Node-local storage:** a PV tied to one hostname is not automatically portable. Plan data transfer and volume binding before moving a stateful Pod.
+- **Deletion protection:** review PV reclaim policy and Flux pruning behavior before removing a PVC, namespace, or storage manifest.
+- **Backups:** preserve application data independently of Git. Git tracks desired state, not database contents or game worlds.
+- **Rollbacks:** reverting a manifest does not reconstruct a deleted dynamically provisioned volume. Validate backup and restore procedures separately.
+- **Credentials:** avoid displaying decrypted Secrets in logs, issue comments, or build output; use least-privilege registry and application credentials.
+
+See [Secrets management](docs/secrets.md) and [Operations and recovery](docs/operations.md).
 
 ## Documentation
 
@@ -162,16 +228,6 @@ Expected result:
 - [Radio](docs/radio.md)
 - [Renovate](docs/renovate.md)
 - [Contributing](CONTRIBUTING.md)
-
-## Safety principles
-
-- Git is the source of truth; avoid routine imperative changes to managed resources.
-- Never commit plaintext credentials, access tokens, private keys, or decrypted SOPS output.
-- Persistent Minecraft and Radio resources use retained local storage and Flux prune protection where appropriate.
-- Inspect rendered manifests before merging.
-- Treat node-bound local storage as non-portable and back it up independently.
-- Radio library changes are content changes, but they are still versioned in Git and should be recoverable by reverting a commit.
-- Private OCI registry credentials are read-only inside Kubernetes; image publishing uses a separate credential.
 
 ## License
 
