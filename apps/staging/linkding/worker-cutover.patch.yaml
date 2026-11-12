@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkding
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-worker-01
+      volumes:
+        - name: linkding-data
+          persistentVolumeClaim:
+            claimName: linkding-data-worker-pvc

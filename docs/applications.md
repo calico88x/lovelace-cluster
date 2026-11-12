@@ -8,35 +8,37 @@ Key characteristics:
 
 - Application port `9090`
 - Runtime UID/GID `33` (`www-data`)
-- Production PVC `linkding-data-pvc` (1 GiB), mounted at `/etc/linkding/data`, currently backed by local storage on `lovelace`
+- Production PVC `linkding-data-worker-pvc` (1 GiB), mounted at `/etc/linkding/data`, backed by local storage on `k8s-worker-01`
 - Superuser configuration supplied through a SOPS-encrypted Secret
 - ClusterIP Service and Traefik ingress
 - Cloudflare Tunnel with SOPS-encrypted credentials
 
 ### Worker-node migration
 
-Linkding is being migrated from `lovelace` to `k8s-worker-01`
+Linkding was migrated from `lovelace` to `k8s-worker-01`
 to separate application workloads from the control plane.
 
-The migration uses two distinct PVCs:
+The migration used two distinct PVCs:
 
 | PVC | Purpose | State |
 | --- | --- | --- |
-| `linkding-data-pvc` | Original production data on `lovelace` | Active |
-| `linkding-data-worker-pvc` | New worker-local destination | Pending initial provisioning |
+| `linkding-data-worker-pvc` | Production data on `k8s-worker-01` | Active after cutover |
+| `linkding-data-pvc` | Original data on `lovelace` | Retained for rollback |
 
 Both PVCs request 1 GiB of storage.
 
 The destination uses the `local-path` StorageClass with
-`WaitForFirstConsumer` volume binding. Its placement will be
-determined by the first consuming Pod's scheduling constraints.
+`WaitForFirstConsumer` binding and is provisioned on `k8s-worker-01`.
 
-During preparation, Linkding continues using its original PVC.
-The migration must preserve all files under `/etc/linkding/data`,
-including the SQLite databases and application secret key.
+The complete application data directory was copied after stopping
+Linkding. Both SQLite databases passed integrity checks on the
+destination, and file ownership was preserved.
 
-The original PVC must not be deleted until the migrated application
-has passed data-integrity and functional validation.
+Linkding uses `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`. With a single replica, this prevents additional rollout Pods from being created before the existing replica is removed.
+
+The original PVC remains retained for rollback until the migrated
+application has passed functional verification and the rollback
+retention period has ended.
 
 ## Minecraft
 
