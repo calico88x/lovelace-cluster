@@ -22,23 +22,27 @@ The migration used two distinct PVCs:
 
 | PVC | Purpose | State |
 | --- | --- | --- |
-| `linkding-data-worker-pvc` | Production data on `k8s-worker-01` | Active after cutover |
-| `linkding-data-pvc` | Original data on `lovelace` | Retained for rollback |
+| `linkding-data-worker-pvc` | Production data on `k8s-worker-01` | Active |
+| `linkding-data-pvc` | Original data on `lovelace` | Retired after migration |
 
-Both PVCs request 1 GiB of storage.
+Both PVCs requested 1 GiB of storage.
 
 The destination uses the `local-path` StorageClass with
-`WaitForFirstConsumer` binding and is provisioned on `k8s-worker-01`.
+`WaitForFirstConsumer` binding and was provisioned on
+`k8s-worker-01`.
 
 The complete application data directory was copied after stopping
 Linkding. Both SQLite databases passed integrity checks on the
 destination, and file ownership was preserved.
 
-Linkding uses `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`. With a single replica, this prevents additional rollout Pods from being created before the existing replica is removed.
+Linkding uses `RollingUpdate` with `maxSurge: 0` and
+`maxUnavailable: 1`. With a single replica, this prevents
+additional rollout Pods from being created before the existing
+replica is removed.
 
-The original PVC remains retained for rollback until the migrated
-application has passed functional verification and the rollback
-retention period has ended.
+The original PVC was retained during the rollback window and
+subsequently retired through a separate GitOps cleanup change.
+A verified cold backup is retained outside the cluster.
 
 ## Minecraft
 

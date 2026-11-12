@@ -128,19 +128,18 @@ by changing its node selector alone.
 
 ### Current deployment
 
-After the worker cutover:
+Following the migration and storage cleanup:
 
 - Linkding runs on `k8s-worker-01`.
 - Its production PVC is `linkding-data-worker-pvc`.
 - Deployment strategy is `RollingUpdate` with `maxSurge: 0` and `maxUnavailable: 1`.
-- Cloudflared remains on the `core` node pool.
-- `linkding-data-pvc` remains on `lovelace` for rollback.
+- Cloudflared runs on the `worker` node pool.
+- The original `linkding-data-pvc` was retired through GitOps.
 
 The temporary shutdown patch and volume-provisioning helper
 were removed from the desired state.
 
-Verify the actual Pod placement, application readiness,
-database contents, and ingress connectivity after reconciliation.
+The worker-local PVC is the sole production data volume.
 
 ### Controlled application shutdown
 
@@ -152,19 +151,27 @@ backup and data transfer. Cloudflared and both PVCs remained
 available throughout the migration.
 
 The temporary shutdown patch was removed during the worker
-cutover. The original PVC remains retained for rollback.
+cutover. The original PVC was retained temporarily for rollback
+and retired during the final storage cleanup.
 
 ### Storage safety
 
-- Source PVC: `linkding-data-pvc` on `lovelace`
-- Destination PVC: `linkding-data-worker-pvc`
-- Destination node: `k8s-worker-01`
+- Historical source PVC: `linkding-data-pvc` on `lovelace` (retired)
+- Production PVC: `linkding-data-worker-pvc`
+- Production node: `k8s-worker-01`
 - StorageClass: `local-path` (`WaitForFirstConsumer`)
 - Application data: `/etc/linkding/data`
 - Runtime UID/GID: `33:33`
 
-The source PersistentVolume has reclaim policy `Delete`.
-Deleting its PVC may permanently remove its backing directory.
+The original PersistentVolume used reclaim policy `Delete`.
+Retiring its PVC also permits deletion of the backing storage.
+
+The cold migration archive, `linkding-cold-20261111.tar.gz`,
+was verified independently of Kubernetes before storage retirement.
+
+After retirement, restoring historical application data requires
+the preserved backup. Reverting Git manifests alone does not
+restore the deleted volume contents.
 
 ### Migration procedure
 
