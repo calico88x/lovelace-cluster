@@ -6,188 +6,367 @@ Lovelace is a two-node, heterogeneous [K3s](https://k3s.io/) Kubernetes cluster 
 
 ## Architecture
 
+### 1. `flux-system` — GitOps control plane
+
+Controllers and reconciliation boundaries; lines indicate declared controller relationships, not observed network flows.
+
 ```mermaid
 flowchart TB
-    classDef active stroke:#16a34a,stroke-width:2px
+    forgejo["Forgejo main<br/>Authoritative GitOps source"]
+    helmreleases["HelmReleases<br/>Monitoring and infrastructure"]
+    deployed["Applications and platform resources<br/>Across the cluster"]
+
+    subgraph fluxns["Namespace: flux-system · core node"]
+        git["GitRepository / flux-system"]
+        source["Deployment / source-controller<br/>1/1"]
+        kustomize["Deployment / kustomize-controller<br/>1/1"]
+        helm["Deployment / helm-controller<br/>1/1"]
+        notify["Deployment / notification-controller<br/>1/1"]
+        apps["Kustomization / apps"]
+        infra["Kustomization / infrastructure-controllers"]
+        monctl["Kustomization / monitoring-controllers"]
+        moncfg["Kustomization / monitoring-configs"]
+        git --> source
+        source -.->|Source artifacts| kustomize
+        kustomize --> apps
+        kustomize --> infra
+        kustomize --> monctl
+        kustomize --> moncfg
+        monctl -.->|Applies chart definitions| helmreleases
+    end
+
+    forgejo -->|Fetch revision| git
+    apps --> deployed
+    infra --> deployed
+    monctl --> deployed
+    moncfg --> deployed
+    helm --> helmreleases
+
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class source,kustomize,helm,notify workload
+    class forgejo,helmreleases,deployed external
+```
+
+### 2. `minecraft` — Paper (dormant) and shared Playit tunnel
+
+Paper and its Alloy logger are scaled to zero; Playit remains active and points to the Create server through the ExternalName alias.
+
+```mermaid
+flowchart TB
+    players["Minecraft players"] --> edge["Playit public edge"]
+    createSvc["Service / minecraft-create<br/>Namespace: minecraft-create"]
+    disk["Host directory<br/>k8s-worker-01 /srv/minecraft/data"]
+    pv[("PV / minecraft-data<br/>60 GiB · Retain · local")]
+
+    subgraph ns["Namespace: minecraft"]
+        playit["Deployment / playit<br/>1/1 · core"]
+        alias["Service / minecraft-active<br/>ExternalName to Create"]
+        paperSvc["Services / minecraft + headless<br/>Paper endpoints inactive"]
+        paper["StatefulSet / minecraft<br/>0 replicas · stopped"]
+        alloy["Deployment / alloy-minecraft-logs<br/>0 replicas · stopped"]
+        pvc["PVC / minecraft-data<br/>Static local storage"]
+        config["ConfigMaps + SOPS Secrets<br/>Paper and Playit configuration"]
+        playit --> alias
+        paperSvc -.-> paper
+        paper -.->|Mounts when active| pvc
+        config -.-> paper
+        config -.-> playit
+        alloy -.->|Dormant log collection| paper
+    end
+
+    edge --> playit
+    alias -->|DNS alias| createSvc
+    pvc --> pv --> disk
+
+    classDef workload stroke:#16a34a,stroke-width:2px
     classDef dormant stroke:#94a3b8,stroke-width:2px,stroke-dasharray:5 5
-    classDef storage stroke:#3b82f6,stroke-width:2px
+    classDef storage stroke:#2563eb,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class playit workload
+    class paper,paperSvc,alloy dormant
+    class pvc,pv,disk storage
+    class players,edge,createSvc external
+```
 
-    subgraph external["External systems and users"]
-        direction LR
-        operator["Operator"]
-        forgejo["Forgejo<br/>Authoritative GitOps source"]
-        github["GitHub mirror"]
-        library["Radio library<br/>Git LFS"]
-        registry["Forgejo OCI registry"]
-        players["Minecraft players"]
-        playitEdge["Playit public edge"]
-        cloudflare["Cloudflare edge"]
-        webUsers["Web users"]
-        listeners["Radio listeners"]
-        central["Docker LXC<br/>Central Loki + Prometheus"]
-        explorer["NovaLabs Topology Explorer<br/>Docker LXC"]
+### 3. `minecraft-create` — Active NeoForge server, storage, and logging
+
+The four application containers run in one StatefulSet Pod. Its PVC is namespaced, but its PV is cluster-scoped and physically anchored to k8s-worker-01.
+
+```mermaid
+flowchart TB
+    alias["minecraft-active alias<br/>Namespace: minecraft"]
+    loki["Docker LXC<br/>Loki :3100"]
+    central["Docker LXC monitoring<br/>Exporter endpoints"]
+    pv[("PV / minecraft-create-data<br/>90 GiB · Retain · local")]
+    disk["Host directory<br/>k8s-worker-01 /srv/minecraft-create/data"]
+
+    subgraph ns["Namespace: minecraft-create · worker"]
+        svc["Services / minecraft-create<br/>+ headless"]
+        sts["StatefulSet / minecraft-create<br/>1/1"]
+        subgraph pod["Pod: minecraft-create-0 · 4/4 containers"]
+            game["NeoForge / All of Create<br/>Game server"]
+            scan["Storage metrics collector"]
+            net["Network exporter"]
+            dh["Distant Horizons metrics collector"]
+        end
+        pvc["PVC / minecraft-create-data<br/>Static local storage"]
+        cfg["ConfigMaps + SOPS Secret<br/>Modpack, server, RCON"]
+        alloy["Deployment / alloy-minecraft-create-logs<br/>1/1"]
+        svc --> sts --> game
+        game -->|World and mod data| pvc
+        scan -.->|Read-only scan| pvc
+        dh -.->|RCON metrics| game
+        cfg -.-> game
+        alloy -.->|Reads Pod logs| game
     end
 
-    subgraph cluster["Lovelace · K3s cluster"]
-        direction TB
+    alias --> svc
+    pvc --> pv --> disk
+    alloy -->|Log delivery| loki
+    game -.->|Application metrics| central
+    net -.->|Network metrics| central
 
-        nodes["Nodes<br/>lovelace: ARM64 control plane / core<br/>k8s-worker-01: Debian x86_64 / worker"]
-        traefik["Traefik ingress gateway<br/>LoadBalancer on both node IPs"]
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef storage stroke:#2563eb,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class sts,game,alloy workload
+    class pvc,pv,disk storage
+    class alias,loki,central external
+```
 
-        subgraph fluxNS["flux-system · core node"]
-            fluxGit["GitRepository / flux-system"]
-            fluxCtrl["4 running controllers<br/>source / kustomize<br/>helm / notification"]
-            fluxApps["Kustomization: apps"]
-            fluxInfra["Kustomization: infrastructure-controllers"]
-            fluxMon["Kustomizations:<br/>monitoring-controllers + configs"]
-            fluxGit --> fluxCtrl
-            fluxCtrl --> fluxApps
-            fluxCtrl --> fluxInfra
-            fluxCtrl --> fluxMon
-        end
+### 4. `linkding` — Public tunnel, private ingress, and worker-local SQLite data
 
-        subgraph minecraftNS["minecraft · shared tunnel ACTIVE / Paper STOPPED"]
-            mcPlayit["Deployment / playit<br/>1/1 · core node"]
-            mcAlias["Service / minecraft-active<br/>ExternalName → Create"]
-            mcPaperSvc["Services / minecraft + headless<br/>No running Paper endpoints"]
-            mcPaper["StatefulSet / minecraft<br/>0/0 · STOPPED"]
-            mcAlloy["Deployment / alloy-minecraft-logs<br/>0/0 · STOPPED"]
-            mcPV[("PV + PVC / minecraft-data<br/>60 GiB · Retain · worker-local")]
-            mcConfig["Paper ConfigMaps + Secrets<br/>Playit Secret"]
-            mcPlayit --> mcAlias
-            mcPaperSvc -.-> mcPaper
-            mcPaper -.-> mcPV
-            mcConfig -.-> mcPaper
-            mcConfig -.-> mcPlayit
-        end
+Public Cloudflare Tunnel traffic connects directly to the Linkding Service; private LAN traffic goes through Traefik and a separate Kubernetes Ingress.
 
-        subgraph createNS["minecraft-create · ACTIVE on worker"]
-            crSvc["Services<br/>minecraft-create + headless"]
-            crSTS["StatefulSet / minecraft-create<br/>1/1 · Pod 4/4"]
-            crContainers["NeoForge / All of Create<br/>Storage metrics collector<br/>Network exporter<br/>DH metrics collector"]
-            crAlloy["Deployment / Alloy logs<br/>1/1 · worker"]
-            crPV[("PV + PVC / minecraft-create-data<br/>90 GiB · Retain")]
-            crConfig["ConfigMaps + encrypted Secret<br/>Modpack / server / RCON config"]
-            crSvc --> crSTS
-            crSTS --> crContainers
-            crSTS --> crPV
-            crConfig -.-> crSTS
-            crAlloy -.->|Collects logs| crSTS
-        end
+```mermaid
+flowchart TB
+    public["Public web users"] --> cf["Cloudflare edge"]
+    private["Private LAN clients"] --> traefik["Traefik ingress controller"]
+    pv[("PV · dynamically provisioned<br/>local-path · 1 GiB")]
+    disk["Worker host directory<br/>/var/lib/rancher/k3s/storage/..."]
 
-        subgraph linkNS["linkding · ACTIVE on worker"]
-            linkCF["Deployment / cloudflared<br/>1/1 · worker"]
-            linkSvc["Service / linkding<br/>ClusterIP · 9090"]
-            linkApp["Deployment / linkding<br/>1/1 · worker"]
-            linkPV[("PVC / linkding-data-worker-pvc<br/>1 GiB · local-path")]
-            linkIng["Ingress / linkding<br/>Private lab hostname"]
-            linkSecrets["Encrypted Secrets + ConfigMap<br/>Tunnel and application config"]
-            linkCF --> linkSvc
-            linkSvc --> linkApp
-            linkApp --> linkPV
-            linkIng --> linkSvc
-            linkSecrets -.-> linkCF
-            linkSecrets -.-> linkApp
-        end
-
-        subgraph radioNS["radio · ACTIVE on worker"]
-            radioSync["CronJob / radio-library-sync<br/>Every 5 minutes"]
-            radioPV[("PV + PVC / radio-music<br/>60 GiB · Retain")]
-            liquid["Deployment / liquidsoap<br/>1/1"]
-            liquidSvc["Service / liquidsoap-metrics"]
-            iceSvc["Service / icecast<br/>8000 + 9119"]
-            icecast["Deployment / icecast<br/>1/1 · Pod 2/2<br/>Icecast + exporter"]
-            radioIng["Ingresses / internal + public<br/>Exact path /radio.mp3"]
-            radioCert["Certificate / radio-public<br/>TLS Secret"]
-            radioConfig["Encrypted Secrets + ConfigMaps<br/>Stream / library / registry"]
-            radioSync -->|Publish library| radioPV
-            radioPV -->|Music files| liquid
-            liquid -->|Audio source| iceSvc
-            iceSvc --> icecast
-            liquid --> liquidSvc
-            radioIng --> iceSvc
-            radioCert -.-> radioIng
-            radioConfig -.-> radioSync
-            radioConfig -.-> liquid
-            radioConfig -.-> icecast
-        end
-
-        subgraph renovateNS["renovate · core node"]
-            renovate["CronJob / renovate<br/>Hourly · completed Jobs"]
-            renConfig["Configuration + encrypted credentials"]
-            renConfig -.-> renovate
-        end
-
-        subgraph certNS["cert-manager · core node"]
-            cert["Deployment / cert-manager<br/>1/1"]
-            cainj["Deployment / cainjector<br/>1/1"]
-            webhook["Deployment / webhook<br/>1/1"]
-            issuers["ClusterIssuers<br/>Let's Encrypt staging + production<br/>Cloudflare DNS-01"]
-            cert --> issuers
-        end
-
-        subgraph monitorNS["monitoring"]
-            monOperator["Prometheus Operator<br/>Deployment 1/1 · core"]
-            monProm["Prometheus StatefulSet<br/>Pod 2/2 · core"]
-            monAlerts["Alertmanager StatefulSet<br/>Pod 2/2 · core"]
-            monGrafana["Grafana Deployment<br/>Pod 3/3 · core"]
-            monState["kube-state-metrics<br/>Deployment 1/1 · core"]
-            monNodes["Node exporter DaemonSet<br/>2/2 · both nodes"]
-            monRadio["Radio ServiceMonitors<br/>Icecast + Liquidsoap"]
-            monOperator --> monProm
-            monProm --> monAlerts
-            monProm --> monState
-            monProm --> monNodes
-            monProm --> monRadio
-            monGrafana -->|Queries| monProm
-        end
-
-        subgraph topologyNS["topology-system · RBAC only"]
-            topoRBAC["ServiceAccount<br/>ClusterRole + ClusterRoleBinding<br/>Read-only discovery · no Pods"]
-        end
+    subgraph ns["Namespace: linkding · worker"]
+        tunnel["Deployment / cloudflared<br/>1/1 · outbound tunnel"]
+        ingress["Ingress / linkding<br/>Private lab hostname"]
+        svc["Service / linkding<br/>ClusterIP :9090"]
+        app["Deployment / linkding<br/>1/1"]
+        pvc["PVC / linkding-data-worker-pvc<br/>1 GiB · local-path"]
+        cfg["SOPS Secrets + ConfigMap<br/>App and tunnel settings"]
+        tunnel --> svc
+        ingress --> svc
+        svc --> app
+        app -->|/etc/linkding/data| pvc
+        cfg -.-> app
+        cfg -.-> tunnel
     end
 
-    operator --> forgejo
-    forgejo -.->|Mirror| github
-    forgejo --> fluxGit
-    renovate -->|Dependency PRs| forgejo
+    cf <-->|Outbound tunnel connection| tunnel
+    traefik --> ingress
+    pvc --> pv --> disk
 
-    fluxApps -.-> mcPlayit
-    fluxApps -.-> crSTS
-    fluxApps -.-> linkApp
-    fluxApps -.-> radioSync
-    fluxInfra -.-> cert
-    fluxInfra -.-> renovate
-    fluxInfra -.-> topoRBAC
-    fluxMon -.-> monOperator
-    fluxMon -.-> monRadio
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef storage stroke:#2563eb,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class tunnel,app workload
+    class pvc,pv,disk storage
+    class public,cf,private,traefik external
+```
 
-    players --> playitEdge --> mcPlayit
-    mcAlias -->|DNS alias| crSvc
+### 5. `radio` — Streaming pipeline, library reconciliation, and dual ingress
 
-    webUsers --> cloudflare
-    linkCF <-->|Outbound tunnel| cloudflare
-    webUsers -->|Private LAN| traefik
-    traefik --> linkIng
+The media PV is local to k8s-worker-01. The public ingress exposes only /radio.mp3; the internal ingress uses the lab hostname.
 
-    listeners -->|HTTPS| traefik
-    traefik --> radioIng
+```mermaid
+flowchart TB
+    library["Forgejo / radio-library<br/>Git LFS"]
+    registry["Forgejo OCI registry<br/>Pinned sync image"]
+    listener["Public radio listeners"]
+    lan["Private LAN listeners"]
+    traefik["Traefik ingress controller"]
+    issuer["ClusterIssuer / letsencrypt-production<br/>Cluster-scoped"]
+    monitors["ServiceMonitors<br/>Namespace: monitoring"]
+    pv[("PV / radio-music<br/>60 GiB · Retain · local")]
+    disk["Host filesystem<br/>k8s-worker-01 /srv/radio/music"]
 
-    issuers -.->|Certificate issuance| radioCert
-    registry -.->|Image pulls| radioSync
-    library -->|Git LFS fetch| radioSync
+    subgraph ns["Namespace: radio"]
+        sync["CronJob / radio-library-sync<br/>Every 5 minutes"]
+        pvc["PVC / radio-music"]
+        liquid["Deployment / liquidsoap<br/>1/1 · worker"]
+        lsvc["Service / liquidsoap-metrics"]
+        iceSvc["Service / icecast<br/>Stream :8000 + metrics"]
+        ice["Deployment / icecast<br/>1/1 Pod · 2/2 · worker"]
+        ingressPublic["Ingress / radio-public-stream<br/>Exact /radio.mp3"]
+        ingressPrivate["Ingress / radio-stream<br/>Exact /radio.mp3"]
+        cert["Certificate / radio-public<br/>TLS Secret: radio-public-tls"]
+        config["ConfigMaps + SOPS Secrets<br/>Stream, library, registry"]
+        sync -->|Publish versioned audio| pvc
+        pvc -->|Read music| liquid
+        liquid -->|Encoded audio source| iceSvc
+        iceSvc --> ice
+        liquid --> lsvc
+        ingressPublic --> iceSvc
+        ingressPrivate --> iceSvc
+        cert -.->|TLS for public route| ingressPublic
+        config -.-> sync
+        config -.-> liquid
+        config -.-> ice
+    end
 
-    crAlloy -->|Logs| central
-    monProm -->|Radio metrics remote write| central
-    monRadio -.->|Scrape| iceSvc
-    monRadio -.->|Scrape| liquidSvc
+    library --> sync
+    registry -.->|Image pull| sync
+    pvc --> pv --> disk
+    listener --> traefik --> ingressPublic
+    lan --> traefik --> ingressPrivate
+    issuer -.->|Issues public certificate| cert
+    monitors -.->|Metric discovery| iceSvc
+    monitors -.->|Metric discovery| lsvc
 
-    traefik -->|Grafana ingress| monGrafana
-    explorer -.->|Kubernetes API / RBAC| topoRBAC
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef storage stroke:#2563eb,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class sync,liquid,ice workload
+    class pvc,pv,disk storage
+    class library,registry,listener,lan,traefik,issuer,monitors external
+```
 
-    class mcPaper,mcAlloy,mcPaperSvc dormant
-    class mcPlayit,crSTS,crAlloy,linkApp,linkCF,radioSync,liquid,icecast active
-    class mcPV,crPV,linkPV,radioPV storage
+### 6. `renovate` — Scheduled dependency automation
+
+Renovate is an hourly CronJob, not a permanent application Pod. It opens pull requests against Forgejo, not the GitHub mirror.
+
+```mermaid
+flowchart TB
+    schedule["Hourly schedule"]
+    forgejo["Forgejo / NovaLabs/lovelace-cluster<br/>Branches and pull requests"]
+    mirror["GitHub mirror<br/>Not Renovate target"]
+
+    subgraph ns["Namespace: renovate · core node"]
+        cron["CronJob / renovate<br/>concurrencyPolicy: Forbid"]
+        jobs["Jobs / transient Pods<br/>Completed after scans"]
+        config["ConfigMap / Renovate configuration"]
+        creds["SOPS Secret<br/>Forgejo API credentials"]
+        cron --> jobs
+        config -.-> cron
+        creds -.-> jobs
+    end
+
+    schedule --> cron
+    jobs -->|Scan dependencies + propose PRs| forgejo
+    forgejo -.->|Mirror only| mirror
+
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class cron workload
+    class schedule,forgejo,mirror external
+```
+
+### 7. `cert-manager` — Certificate controllers and cluster-scoped issuers
+
+ClusterIssuers are cluster-scoped, whereas the cert-manager controllers live in the cert-manager namespace and the radio Certificate lives in radio.
+
+```mermaid
+flowchart TB
+    api["Kubernetes API / admission"]
+    radioCert["Certificate / radio-public<br/>Namespace: radio"]
+    radioTls["Secret / radio-public-tls<br/>Namespace: radio"]
+    staging["ClusterIssuer / letsencrypt-staging<br/>Cluster-scoped"]
+    prod["ClusterIssuer / letsencrypt-production<br/>Cluster-scoped"]
+    cf["Cloudflare DNS-01<br/>DNS challenge"]
+    acme["Let's Encrypt / ACME"]
+
+    subgraph ns["Namespace: cert-manager · core node"]
+        controller["Deployment / cert-manager<br/>1/1"]
+        injector["Deployment / cainjector<br/>1/1"]
+        webhook["Deployment / webhook<br/>1/1"]
+        credentials["SOPS Secret<br/>Cloudflare DNS API token"]
+        credentials -.-> controller
+    end
+
+    api -.->|Admission validation| webhook
+    injector -.->|CA bundle injection| api
+    controller -.->|Reconciles| radioCert
+    radioCert -->|Issuer reference| prod
+    controller -.-> staging
+    prod -->|DNS-01 workflow| cf
+    staging -.->|Staging validation| cf
+    cf -.->|Challenge validation| acme
+    radioCert -->|Stores certificate| radioTls
+
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class controller,injector,webhook workload
+    class api,radioCert,radioTls,staging,prod,cf,acme external
+```
+
+### 8. `monitoring` — In-cluster Prometheus stack and external integrations
+
+Prometheus and Alertmanager are operator-managed; Grafana is installed by the Helm chart. Radio ServiceMonitors discover radio namespace endpoints.
+
+```mermaid
+flowchart TB
+    traefik["Traefik ingress<br/>Grafana private hostname"]
+    radio["Radio Services<br/>Icecast + Liquidsoap exporters<br/>Namespace: radio"]
+    nodes["Cluster nodes<br/>lovelace + k8s-worker-01"]
+    central["Docker LXC<br/>Central Prometheus / remote write"]
+
+    subgraph ns["Namespace: monitoring"]
+        operator["Deployment / Prometheus Operator<br/>1/1 · core"]
+        prom["Prometheus StatefulSet<br/>Pod 2/2 · core"]
+        alerts["Alertmanager StatefulSet<br/>Pod 2/2 · core"]
+        grafana["Grafana Deployment<br/>Pod 3/3 · core"]
+        state["Deployment / kube-state-metrics<br/>1/1 · core"]
+        exporter["DaemonSet / node-exporter<br/>2/2 · both nodes"]
+        radioSM["ServiceMonitors<br/>Icecast + Liquidsoap"]
+        secret["SOPS Secret / grafana-admin"]
+        operator --> prom
+        operator --> alerts
+        prom -->|Alert notifications| alerts
+        grafana -->|PromQL queries| prom
+        prom -.->|Scrapes| state
+        prom -.->|Scrapes| exporter
+        prom -.->|Uses discovery rules| radioSM
+        secret -.-> grafana
+    end
+
+    traefik --> grafana
+    nodes -.->|Node metrics| exporter
+    radioSM -.->|Selects radio metrics Services| radio
+    prom -.->|Scrapes discovered targets| radio
+    prom -->|Remote write for radio metrics| central
+
+    classDef workload stroke:#16a34a,stroke-width:2px
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class operator,prom,alerts,grafana workload
+    class traefik,radio,nodes,central external
+```
+
+### 9. `topology-system` — Read-only external topology discovery
+
+Only the ServiceAccount is namespaced. ClusterRole and ClusterRoleBinding are cluster-scoped. There are no application Pods in this namespace.
+
+```mermaid
+flowchart TB
+    explorer["NovaLabs Topology Explorer<br/>Hosted on Docker LXC"]
+    api["Lovelace Kubernetes API"]
+    resources["List-only discovery<br/>Nodes, Pods, Services, EndpointSlices<br/>Deployments, ReplicaSets, StatefulSets<br/>DaemonSets, Jobs, CronJobs"]
+
+    subgraph ns["Namespace: topology-system · no Pods"]
+        sa["ServiceAccount / topology-reader<br/>automountServiceAccountToken: false"]
+    end
+
+    subgraph cluster["Cluster-scoped RBAC"]
+        binding["ClusterRoleBinding<br/>novalabs-topology-reader"]
+        role["ClusterRole<br/>novalabs-topology-reader<br/>list verb only"]
+        binding -->|Role reference| role
+        binding -->|Subject reference| sa
+    end
+
+    explorer -->|Authenticated API requests| api
+    api -.->|Authorize against RBAC| binding
+    api -->|Permitted list requests| resources
+
+    classDef external stroke:#64748b,stroke-dasharray:3 3
+    class explorer,api,resources external
 ```
 
 The architecture diagram represents the live Lovelace workload topology and GitOps-managed resources as of November 11, 2026. Green borders highlight selected active workloads; dashed gray borders identify dormant resources; blue borders identify persistent storage.
