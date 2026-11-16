@@ -40,6 +40,24 @@ The expected Caddy root certificate SHA-256 fingerprint is:
 
 If the Caddy root CA changes, verify the replacement certificate's fingerprint, update both GitOps copies, and reconcile the affected CronJobs through Flux. The replacement Jobs must be tested against Forgejo HTTPS. Never commit Caddy's private CA key.
 
+### Forgejo OCI registry
+
+The Forgejo OCI registry currently serves HTTP on
+`forgejo.caliconet.lab:3002`, while the Git and token endpoints
+are available over HTTPS through Caddy.
+
+The self-hosted `RENOVATE_HOST_RULES` configuration enables
+`insecureRegistry` for the Forgejo Docker datasource so that
+Renovate does not attempt HTTPS against port 3002.
+
+The registry returns a standard Docker V2 Bearer authentication
+challenge. If private image lookups still fail, configure
+registry-specific read credentials using a SOPS-encrypted Secret.
+Do not store credentials in this ConfigMap.
+
+Long term, migrate the OCI registry to HTTPS through Caddy
+and remove the insecure registry exception.
+
 ## Repository configuration
 
 The root `renovate.json` enables Kubernetes YAML discovery. Renovate inspects applicable manifests and proposes image-tag updates as pull requests.
