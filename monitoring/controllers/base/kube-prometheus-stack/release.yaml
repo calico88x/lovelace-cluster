@@ -58,7 +58,7 @@ spec:
     prometheus:
       prometheusSpec:
         remoteWrite:
-          - url: http://192.168.3.120:9090/api/v1/write
+          - url: http://192.168.1.120:9090/api/v1/write
             writeRelabelConfigs:
               - sourceLabels:
                   - namespace
