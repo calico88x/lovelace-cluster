@@ -21,6 +21,25 @@ The intended configuration is:
 
 The API token is loaded from the SOPS-encrypted `renovate-container-env` Secret. Do not store the token in the ConfigMap, CronJob, or `renovate.json`.
 
+## Forgejo HTTPS certificate trust
+
+Renovate communicates with Forgejo through its API and uses Git subprocesses for repository operations. These clients must trust the internal Caddy certificate authority.
+
+The verified public root certificate is stored at `infrastructure/controllers/base/renovate/forgejo-caddy-root-ca.crt` and distributed through the `forgejo-caddy-root-ca` ConfigMap in the `renovate` namespace.
+
+The CronJob mounts the certificate read-only at `/etc/forgejo-ca/ca.crt` and configures:
+
+- `NODE_EXTRA_CA_CERTS` to add the Caddy root to Node.js certificate trust.
+- `GIT_CONFIG_*` to configure Forgejo-specific Git HTTPS certificate trust.
+
+This preserves the default public CA trust used for GitHub and external dependency registries. TLS verification must remain enabled.
+
+The expected Caddy root certificate SHA-256 fingerprint is:
+
+`A52BBC297D0802299900451B120ABAC6423533B18112B51958A05DB812A5A321`
+
+If the Caddy root CA changes, verify the replacement certificate's fingerprint, update both GitOps copies, and reconcile the affected CronJobs through Flux. The replacement Jobs must be tested against Forgejo HTTPS. Never commit Caddy's private CA key.
+
 ## Repository configuration
 
 The root `renovate.json` enables Kubernetes YAML discovery. Renovate inspects applicable manifests and proposes image-tag updates as pull requests.
