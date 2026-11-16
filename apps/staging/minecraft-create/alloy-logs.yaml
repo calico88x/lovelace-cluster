@@ -121,7 +121,7 @@ data:
 
     loki.write "docker_lxc" {
       endpoint {
-        url = "http://192.168.3.120:3100/loki/api/v1/push"
+        url = "http://192.168.1.120:3100/loki/api/v1/push"
       }
     }
 

@@ -85,20 +85,30 @@ A `curl: (23)` after piping to `head` only means `head` closed the pipe after re
 
 ## Logging
 
-Grafana Alloy runs in the `minecraft` namespace with namespace-scoped RBAC. It discovers the Minecraft pod, keeps only the `minecraft` container logs, attaches stable labels, and sends them to Loki on the Docker LXC.
+Grafana Alloy collects Minecraft logs with namespace-scoped RBAC. Both collectors are managed by Flux:
 
-Current Loki destination:
+- `minecraft-create/alloy-minecraft-create-logs` — active, one replica.
+- `minecraft/alloy-minecraft-logs` — scaled to zero while Minecraft Paper is stopped.
 
-```text
-http://192.168.3.120:3100/loki/api/v1/push
-```
+Central Loki runs on DockerLXC CT104 at `192.168.1.120:3100`. CT104 now uses only its Subnet10 interface; the former `192.168.3.120` endpoint is retired.
 
-Inspect Alloy:
+Current Loki push endpoint:
 
-```bash
-kubectl get pods -n minecraft -l app=alloy-minecraft-logs
-kubectl logs -n minecraft deployment/alloy-minecraft-logs --tail=200
-```
+    http://192.168.1.120:3100/loki/api/v1/push
+
+The configurations are declared in:
+
+- `apps/staging/minecraft-create/alloy-logs.yaml`
+- `apps/staging/minecraft/alloy-logs.yaml`
+
+Do not modify the live ConfigMaps directly. After Flux reconciliation, confirm the updated configuration is mounted at `/etc/alloy/config.alloy`, ensure Alloy loads it, and verify that fresh logs reach Loki without delivery errors.
+
+Inspect the active collector:
+
+    kubectl get pods -n minecraft-create -l app=alloy-minecraft-create-logs
+    kubectl logs -n minecraft-create deployment/alloy-minecraft-create-logs --tail=200
+
+Keep the Minecraft Paper collector scaled to zero until that server is intentionally reactivated.
 
 ## Useful PromQL
 
