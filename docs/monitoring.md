@@ -81,6 +81,13 @@ curl -fsS --max-time 5 http://192.168.3.112:9940/metrics | head
 curl -fsS --max-time 5 http://192.168.3.112:9101/metrics | head
 ```
 
+Lovelace Prometheus forwards selected metrics using remote write to the
+DockerLXC Prometheus receiver at `http://192.168.1.120:9090/api/v1/write`.
+
+The previous `192.168.3.120` endpoint was retired during the CT104
+single-NIC migration. The destination must remain reachable from the
+Lovelace network through OPNsense.
+
 A `curl: (23)` after piping to `head` only means `head` closed the pipe after receiving enough lines; it does not indicate a failed scrape.
 
 ## Logging
