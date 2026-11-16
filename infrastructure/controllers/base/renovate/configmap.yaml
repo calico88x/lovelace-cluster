@@ -10,3 +10,5 @@ data:
   RENOVATE_PLATFORM: "forgejo"
   RENOVATE_CUSTOM_ENV_VARIABLES: >-
     {"GIT_CONFIG_COUNT":"1","GIT_CONFIG_KEY_0":"http.https://forgejo.caliconet.lab/.sslCAInfo","GIT_CONFIG_VALUE_0":"/etc/forgejo-ca/ca.crt"}
+  RENOVATE_HOST_RULES: >-
+    [{"hostType":"docker","matchHost":"forgejo.caliconet.lab","insecureRegistry":true}]
