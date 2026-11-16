@@ -26,12 +26,6 @@ spec:
               env:
                 - name: NODE_EXTRA_CA_CERTS
                   value: "/etc/forgejo-ca/ca.crt"
-                - name: GIT_CONFIG_COUNT
-                  value: "1"
-                - name: GIT_CONFIG_KEY_0
-                  value: "http.https://forgejo.caliconet.lab/.sslCAInfo"
-                - name: GIT_CONFIG_VALUE_0
-                  value: "/etc/forgejo-ca/ca.crt"
 
               volumeMounts:
                 - name: forgejo-ca

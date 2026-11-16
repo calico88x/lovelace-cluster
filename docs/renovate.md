@@ -30,7 +30,7 @@ The verified public root certificate is stored at `infrastructure/controllers/ba
 The CronJob mounts the certificate read-only at `/etc/forgejo-ca/ca.crt` and configures:
 
 - `NODE_EXTRA_CA_CERTS` to add the Caddy root to Node.js certificate trust.
-- `GIT_CONFIG_*` to configure Forgejo-specific Git HTTPS certificate trust.
+- `RENOVATE_CUSTOM_ENV_VARIABLES`, configured in `renovate-configmap`, explicitly forwards the Forgejo-specific `GIT_CONFIG_*` certificate settings to Git subprocesses. Renovate otherwise filters these variables from its child-process environment.
 
 This preserves the default public CA trust used for GitHub and external dependency registries. TLS verification must remain enabled.
 

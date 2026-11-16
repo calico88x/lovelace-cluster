@@ -8,3 +8,5 @@ data:
   RENOVATE_ENDPOINT: "http://forgejo.caliconet.lab:3002/api/v1/"
   RENOVATE_GIT_AUTHOR: "Lovelace Renovate Bot <renovate-bot@caliconet.lab>"
   RENOVATE_PLATFORM: "forgejo"
+  RENOVATE_CUSTOM_ENV_VARIABLES: >-
+    {"GIT_CONFIG_COUNT":"1","GIT_CONFIG_KEY_0":"http.https://forgejo.caliconet.lab/.sslCAInfo","GIT_CONFIG_VALUE_0":"/etc/forgejo-ca/ca.crt"}
