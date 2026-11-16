@@ -256,6 +256,20 @@ Library already current at <commit>
 
 A changed library additionally reports the target commit, Git LFS validation, tracked/published counts, and the new `current` target.
 
+### Forgejo HTTPS certificate trust
+
+The `radio-library-sync` CronJob fetches the radio library through SSH, but Git LFS retrieves its large audio objects through Forgejo HTTPS.
+
+Forgejo uses Caddy's internal certificate authority. The verified public root certificate is stored at `apps/base/radio/forgejo-caddy-root-ca.crt` and distributed through the namespace-scoped `forgejo-caddy-root-ca` ConfigMap.
+
+The CronJob mounts the certificate read-only at `/etc/forgejo-ca/ca.crt`. Git's `GIT_CONFIG_*` environment variables configure URL-scoped CA trust for `https://forgejo.caliconet.lab/`, including Git LFS requests. TLS certificate verification remains enabled.
+
+The verified Caddy root certificate has SHA-256 fingerprint:
+
+`A52BBC297D0802299900451B120ABAC6423533B18112B51958A05DB812A5A321`
+
+If Caddy's internal root CA is rotated, verify the replacement certificate's fingerprint, update the public CA file, and deploy the change through Flux. New reconciliation Jobs will receive the updated ConfigMap. Never commit Caddy's private CA key.
+
 ## Force a reconciliation
 
 Normally, wait for the five-minute schedule. For an immediate test:

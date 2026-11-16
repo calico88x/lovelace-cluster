@@ -6,3 +6,9 @@ resources:
   - renovate-github-env.sops.yaml
   - configmap.yaml
   - cronjob.yaml
+namespace: renovate
+
+configMapGenerator:
+  - name: forgejo-caddy-root-ca
+    files:
+      - ca.crt=forgejo-caddy-root-ca.crt

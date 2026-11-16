@@ -16,3 +16,6 @@ configMapGenerator:
   - name: icecast-exporter
     files:
       - icecast-exporter.py
+  - name: forgejo-caddy-root-ca
+    files:
+      - ca.crt=forgejo-caddy-root-ca.crt
