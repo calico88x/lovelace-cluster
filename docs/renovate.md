@@ -62,6 +62,29 @@ and remove the insecure registry exception.
 
 The root `renovate.json` enables Kubernetes YAML discovery. Renovate inspects applicable manifests and proposes image-tag updates as pull requests.
 
+### Renovate container image lifecycle
+
+The CronJob manifest at
+`infrastructure/controllers/base/renovate/cronjob.yaml`
+uses an explicitly versioned Renovate image with
+`imagePullPolicy: IfNotPresent`.
+
+Do not use the mutable `latest` tag. Image upgrades should be
+reviewed and merged through the normal Forgejo/Flux workflow,
+rather than being introduced implicitly by hourly CronJob runs.
+
+The Kubernetes manager in `renovate.json` discovers YAML image
+references. Verify that future Renovate image updates are
+proposed as pull requests, including updates to its own CronJob.
+
+Version pinning makes deployments predictable but does not
+automatically remove historical image layers. Kubelet handles
+unused image cleanup according to the node-level retention
+policy described in [Operations](operations.md#k3s-image-garbage-collection).
+
+A version tag can still be republished; digest pinning provides
+stronger immutability where required.
+
 ### Flux installation update policy
 
 The root `renovate.json` disables the **Kubernetes manager** for
