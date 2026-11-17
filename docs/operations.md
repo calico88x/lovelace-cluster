@@ -109,6 +109,77 @@ stat -c '%U:%G %u:%g %a %n' /srv/minecraft/data
 
 Minecraft data should remain owned by UID/GID `1000:1000` unless the container configuration is intentionally changed.
 
+## K3s image garbage collection
+
+On November 17, 2026, the `lovelace` control-plane node was
+configured to garbage-collect container images unused for
+seven days.
+
+The host-managed kubelet configuration is located at:
+
+`/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/20-image-gc.conf`
+
+```yaml
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+
+# Garbage-collect images unused for seven days.
+imageMaximumGCAge: 168h
+```
+
+Kubelet retains its default image filesystem garbage-collection
+thresholds: 85% high and 80% low.
+
+Images referenced by containers remain protected. Age-based
+collection is not an exact expiration schedule, and kubelet
+restarts reset image-age tracking.
+
+### Verification
+
+Query the effective kubelet configuration:
+
+```bash
+kubectl get --raw /api/v1/nodes/lovelace/proxy/configz |
+  jq '.kubeletconfig | {
+    imageMaximumGCAge,
+    imageGCHighThresholdPercent,
+    imageGCLowThresholdPercent
+  }'
+```
+
+Expected maximum age: `168h0m0s`.
+
+Inspect filesystem and inode usage:
+
+```bash
+df -hT /
+df -ih /
+```
+
+### Maintenance and recovery
+
+The drop-in is host configuration, not a Flux-managed resource.
+Preserve it in host backups and restore it after rebuilding the
+node. Do not modify `00-k3s-defaults.conf`.
+
+Back up the current configuration before changes. A controlled
+`systemctl restart k3s` is required to load a modified drop-in
+on the control-plane node. The restart temporarily interrupts
+the Kubernetes API and may affect workloads.
+
+To roll back, restore the backed-up drop-in or remove the custom
+override, restart K3s during a maintenance window, and verify
+the effective configuration again.
+
+Do not manually delete Containerd snapshot directories.
+A one-time `crictl rmi --prune` was used during the November 17
+storage incident; it is not a scheduled maintenance mechanism.
+Physical snapshot removal may continue after image metadata
+has been deleted.
+
+This policy has been verified on `lovelace` only. Configure
+and validate `k8s-worker-01` separately.
+
 ## Backup priorities
 
 At minimum, back up:
