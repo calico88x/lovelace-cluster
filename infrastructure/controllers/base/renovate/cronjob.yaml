@@ -12,7 +12,7 @@ spec:
         spec:
           containers:
             - name: renovate
-              image: renovate/renovate:44.252.3
+              image: renovate/renovate:44.252.5
               imagePullPolicy: IfNotPresent
               args:
                 - NovaLabs/lovelace-cluster
